@@ -15,7 +15,11 @@
 (load (concat user-emacs-directory "core") 'noerror 'nomessage)
 (load (concat toki-modules-dir "private/custom-pre") 'noerror 'nomessage)
 
-(defvar toki-modules nil)
+(defvar toki-modules
+  '("editor/ui"        ;; Tidy and beautiful UI
+    "editor/selection" ;; Interactively filter & select from a list
+    "editor/edit"      ;; Slick text editing experience
+    ))
 
 (dolist (module toki-modules)
   (load (concat toki-modules-dir module "/config") 'noerror 'nomessage))
