@@ -175,7 +175,9 @@ See the docstring of `replace-string' for details."
 (use-package editorconfig
   :trigger find-file-noselect
   :config
-  (editorconfig-mode))
+  (editorconfig-mode)
+  (add-hook 'hack-local-variables-hook
+            #'editorconfig-apply))
 
 ;; Whitespace lets us visualize blanks, mainly bad blanks like trailing
 ;; whitespace, see the configuration below.
