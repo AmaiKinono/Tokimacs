@@ -28,9 +28,11 @@
 
 (use-package consult
   :defer t
-  :init
+  :config
   (setq
-   completion-in-region-function #'consult-completion-in-region))
+   completion-in-region-function #'consult-completion-in-region
+   consult-project-root-function #'toki-project-root
+   consult-async-min-input 2))
 
 (use-package marginalia
   :trigger pre-command-hook
