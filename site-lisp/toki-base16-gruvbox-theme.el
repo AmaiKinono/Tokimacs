@@ -1,7 +1,22 @@
-;; lexical-binding: t; -*-
+;;; toki-base16-gruvbox-theme.el --- A base16 mockup of doom-gruvbox theme -*- lexical-binding: t; -*-
+
+;; Copyright (C) 2021 Hao Wang
+;; License: GPL v3, or (at your option) any later version
+
+;;; Commentary:
+
+;;; Code:
+
+;; To see the outline of this file, run `outline-minor-mode', then
+;; `outline-hide-body'.  Another way is to run `occur' with the query:
+;; ^;;;;* \|^(
+
+;;;; Libraries
 
 (toki-declare-ext-pkg base16-theme)
 (require 'base16-theme)
+
+;;;; Theme
 
 (defvar toki-base16-gruvbox-colors
     '(:base00 "#1d2021"
@@ -22,10 +37,12 @@
       ;; Don't know which color to use for now.  It's brown (or dark orange),
       ;; maybe gonna change this after I've seen where it is used.
       :base0F "#d65d0e")
-    "Colors for Toki Base16 Gruvbox")
+    "Colors for Toki Base16 Gruvbox.")
 
 (deftheme toki-base16-gruvbox)
 (base16-theme-define 'toki-base16-gruvbox toki-base16-gruvbox-colors)
 (provide-theme 'toki-base16-gruvbox)
 
 (provide 'toki-base16-gruvbox-theme)
+
+;;; toki-base16-gruvbox-theme.el ends here
