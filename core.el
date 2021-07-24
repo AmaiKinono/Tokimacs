@@ -89,7 +89,6 @@ To use this, bind your key to \"(toki/make-combo command-name)\"."
      ,(format "A combo version of `%s', see its docstring for details."
               command)
      (interactive)
-     (call-interactively #',command)
      (let* ((minibuffer-message-timeout 3)
             (map (make-sparse-keymap))
             (key-event (make-vector 1
@@ -101,9 +100,9 @@ To use this, bind your key to \"(toki/make-combo command-name)\"."
                          (when (timerp toki/combo-key-timer) (cancel-timer toki/combo-key-timer))
                          (setq toki/combo-key-timer (run-with-timer minibuffer-message-timeout
                                                                     nil (set-transient-map map t)))
+                         (call-interactively #',command)
                          (message "Press %s to run %s again"
-                                  (key-description key-event) ',command)
-                         (call-interactively #',command))))
+                                  (key-description key-event) ',command))))
        (define-key map key-event combo-cmd)
        (call-interactively combo-cmd))))
 
