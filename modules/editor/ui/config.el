@@ -9,7 +9,7 @@
 
 ;;;; Themes
 
-(defvar toki-themes '(base16-default-dark)
+(defvar toki-themes '(toki-base16-gruvbox base16-atelier-plateau-light)
   "Themes used when calling `toki-switch-theme'.
 The first element is used as the default theme.")
 
@@ -175,12 +175,13 @@ This doesn't affect Emacs in terminal.")
 ;;; Theme
 
 (use-package base16-theme
+  :init
+  (toki/setq
+   base16-distinct-fringe-background nil)
   :defer t)
 
-(use-package gruvbox-theme
-  :defer t)
-
-(use-package color-theme-sanityinc-tomorrow
+(use-package toki-base16-gruvbox-theme
+  :straight nil
   :defer t)
 
 (defvar toki/theme-index 0
