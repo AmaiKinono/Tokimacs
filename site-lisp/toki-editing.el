@@ -43,6 +43,18 @@ See also `toki-smooth-scroll-step-length'.")
                                         (line-end-position)))
     t))
 
+(defun toki/in-string-p ()
+  "Return t if point is in a string.
+This returns nil if point is before the opening quote, or after
+the end quote."
+  (eq (syntax-ppss-context (syntax-ppss)) 'string))
+
+(defun toki/in-comment-p ()
+  "Return t if point is in a comment.
+This returns nil if point is before/in the opening delimiter, or
+after/in the end delimiter."
+  (eq (syntax-ppss-context (syntax-ppss)) 'comment))
+
 ;;;;; Syntax
 
 ;; Ref: https://www.gnu.org/software/emacs/manual/html_node/elisp/Syntax-Class-Table.html
@@ -188,29 +200,141 @@ Return the point if success."
 
 ;;;;; Movements: sexp
 
+(defun toki/internal-forward-sexp ()
+  "Move forward a sexp, return t if success, otherwise return nil.
+This is a wrapper of `forward-sexp'."
+  (condition-case nil
+      (progn (forward-sexp) t)
+    (scan-error nil)))
+
+(defun toki/internal-backward-sexp ()
+  "Move backward a sexp, return t if success, otherwise return nil.
+This is a wrapper of (forward-sexp -1)."
+  (condition-case nil
+      (progn (forward-sexp -1) t)
+    (scan-error nil)))
+
+(defun toki/forward-sexp-in-construct (probe construct)
+  "Move forward a sexp in certain construct.
+PROBE is a function that should return non-nil when the point is
+in the construct, and nil when it's not.
+
+Return the point after move.  When we can't move forward, return
+nil.
+
+When the point is not in the construct in the first place, throw
+and error \"Not in a CONSTRUCT\"."
+  (when (not (funcall probe))
+    (error (format "Not in a %s" construct)))
+  (let ((end (and (save-excursion (toki/internal-forward-sexp))
+                  (point)))
+        pos)
+    (when end
+      (save-excursion
+        (while (and (toki/forward-same-syntax)
+                    (funcall probe)
+                    (setq pos (point))
+                    (< (point) end))))
+      (when (and pos (>= pos end))
+        (goto-char pos)))))
+
+(defun toki/backward-sexp-in-construct (probe construct)
+  "Move backward a sexp in certain construct.
+PROBE is a function that should return non-nil when the point is
+in the construct, and nil when it's not.
+
+Return the point after move.  When we can't move backward, return
+nil.
+
+When the point is not in the construct in the first place, throw
+and error \"Not in a CONSTRUCT\"."
+  (when (not (funcall probe))
+    (error (format "Not in a %s" construct)))
+  (let ((beg (and (save-excursion (toki/internal-backward-sexp))
+                  (point)))
+        pos)
+    (when beg
+      (save-excursion
+        (while (and (toki/forward-same-syntax -1)
+                    (funcall probe)
+                    (setq pos (point))
+                    (> (point) beg))))
+      (when (and pos (<= pos beg))
+        (goto-char pos)))))
+
+(defun toki/forward-sexp-in-string ()
+  "Move forward a sexp in when point is in string.
+The default `(forward-sexp)' thinks the end quote of a string and
+a beginning quote of the next string wraps a sexp.  This fixed
+that.
+
+Return the point after move.  When we can't move forward (i.e.,
+hit the ending quote), return nil."
+  (toki/forward-sexp-in-construct #'toki/in-string-p "string"))
+
+(defun toki/backward-sexp-in-string ()
+  "Move backward a sexp in when point is in string.
+The default `(backward-sexp)' thinks the end quote of the
+previous string and a beginning quote of this string wraps a
+sexp.  This fixed that.
+
+Return the point after move.  When we can't move backward (i.e.,
+hit the beginning quote), return nil."
+  (toki/backward-sexp-in-construct #'toki/in-string-p "string"))
+
+(defun toki/forward-sexp-in-comment ()
+  "Move forward a sexp in when point is in a comment.
+The default `(forward-sexp)' goes over the end quote of the
+comment block.  This fixed that.
+
+Return the point after move.  When we can't move forward (i.e.,
+hit the ending quote), return nil.
+
+Notice that a point inside the (multichar) quote is not
+considered as in the comment."
+  (toki/forward-sexp-in-construct #'toki/in-comment-p "comment"))
+
+(defun toki/backward-sexp-in-comment ()
+  "Move backward a sexp in when point is in a comment.
+The default `(backward-sexp)' goes over the beginning quote of
+the comment block.  This fixes that.
+
+Return the point after move.  When we can't move backward (i.e.,
+hit the beginning quote), return nil.
+
+Notice that a point inside the (multichar) quote is not
+considered as in the comment."
+  (toki/backward-sexp-in-construct #'toki/in-comment-p "comment"))
+
 (defun toki/forward-sexp ()
   "Jump forward a sexp, including a whole comment block.
 Return t if success."
-  (let ((beg (point)))
-    (toki/forward-blanks)
-    (or (toki/forward-comment-block)
-        (condition-case nil
-            (forward-sexp)
-          (scan-error nil)))
-    (when (not (eq (point) beg))
-      t)))
+  (toki/forward-blanks)
+  (and (or (toki/forward-comment-block)
+           (cond
+            ;; `toki/in-comment-p' doesn't consert a point inside the
+            ;; (multichar) comment quote as in the comment, but this is fine as
+            ;; when a user is deleting things with the point at there, they
+            ;; probably want to break the balanced comment quotes.
+            ((toki/in-comment-p) (toki/forward-sexp-in-comment))
+            ((toki/in-string-p) (toki/forward-sexp-in-string))
+            (t (toki/internal-forward-sexp))))
+       t))
 
 (defun toki/backward-sexp ()
   "Jump backward a sexp or balanced comment block.
 Return t if success."
-  (let ((end (point)))
-    (toki/backward-blanks)
-    (or (toki/backward-comment-block)
-        (condition-case nil
-            (backward-sexp)
-          (scan-error nil)))
-    (when (not (eq (point) end))
-      t)))
+  (toki/backward-blanks)
+  (and (or (toki/backward-comment-block)
+           (cond
+            ;; `toki/in-comment-p' doesn't consert a point inside the
+            ;; (multichar) comment quote as in the comment, but this is fine
+            ;; as when a user is deleting things with the point at there,
+            ;; they probably want to break the balanced comment quotes.
+            ((toki/in-comment-p) (toki/backward-sexp-in-comment))
+            ((toki/in-string-p) (toki/backward-sexp-in-string))
+            (t (toki/internal-backward-sexp))))
+       t))
 
 ;;;;; Movements: symbol + blank
 
@@ -520,16 +644,17 @@ editing."
 
 ;;;###autoload
 (defun toki-kill-region ()
-  "Kill active region, while keeping expressions balanced."
+  "Kill active region.
+If this will cause unbalanced state, ask the user to confirm."
   (interactive)
   (if (use-region-p)
       (let ((beg (region-beginning))
             (end (region-end)))
-        (if (toki/region-balance-p beg end)
-            (progn
-              (setq this-command 'kill-region)
-              (kill-region beg end))
-          (toki/unbalance-error "Can't kill region")))
+        (when (or (toki/region-balance-p beg end)
+                  (y-or-n-p "Kill the region will cause unbalanced state.  \
+Continue? "))
+          (setq this-command 'kill-region)
+          (kill-region beg end)))
     (user-error "No active region")))
 
 ;;;###autoload
