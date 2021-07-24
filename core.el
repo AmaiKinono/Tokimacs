@@ -254,17 +254,25 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
   (require 'autoload)
   (require 'bytecomp))
 
+(defun toki-require-ext-pkg (feature)
+  "Require a feature from external packages."
+  (add-to-list 'load-path (concat user-emacs-directory "straight/build/"
+                                  (symbol-name feature)))
+  (require feature))
+
 (let* (;; Dir & files
        (site-lisp-dir (concat user-emacs-directory "site-lisp/"))
        (build-dir (progn (make-directory (concat site-lisp-dir ".build/") t)
                          (concat site-lisp-dir ".build/")))
        (site-lisp-files (directory-files site-lisp-dir nil ".el$"))
-       (site-lisp-symlinks (directory-files build-dir nil ".el$"))
-       (byte-compiled-files (directory-files build-dir nil ".elc$"))
+       (site-lisp-symlinks (cl-remove "autoloads.el"
+                                      (directory-files build-dir nil ".el$")
+                                      :test #'equal))
+       (byte-compiled-files (cl-remove "autoloads.elc"
+                                       (directory-files build-dir nil ".elc$")
+                                       :test #'equal))
        (newer-lisp-file nil)
        (delete-by-moving-to-trash nil)
-       ;; Don't bother me.
-       (inhibit-message t)
        ;; Prevent `update-directory-autoloads' from running hooks when visiting
        ;; the autoload file.
        (find-file-hook nil)
@@ -273,19 +281,19 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
        (backup-inhibited t)
        (version-control 'never)
        (generated-autoload-file (concat build-dir "autoloads.el")))
-  (cl-letf (((symbol-function #'byte-compile-log-1) #'ignore)
-            ((symbol-function #'byte-compile-log-file) #'ignore)
-            ((symbol-function #'byte-compile-log-warning) #'ignore))
+  (cl-letf (((symbol-function #'byte-compile-log-file) #'ignore)
+            ((symbol-function #'byte-compile-nogroup-warn) #'ignore))
     (add-to-list 'load-path build-dir)
     (let ((unneeded-symlinks
-           (cl-set-difference site-lisp-symlinks
-                              site-lisp-files)))
+           (cl-set-difference site-lisp-symlinks site-lisp-files
+                              :test #'equal)))
       (dolist (f unneeded-symlinks)
         (delete-file (concat build-dir f))))
     (let ((unneeded-byte-files
            (cl-set-difference byte-compiled-files
                               (mapcar (lambda (s) (concat s "c"))
-                                      site-lisp-files))))
+                                      site-lisp-files)
+                              :test #'equal)))
       (dolist (f unneeded-byte-files)
         (delete-file (concat build-dir f))))
     (dolist (f site-lisp-files)
