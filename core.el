@@ -254,11 +254,12 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
   (require 'autoload)
   (require 'bytecomp))
 
-(defun toki-require-ext-pkg (feature)
-  "Require a feature from external packages."
-  (add-to-list 'load-path (concat user-emacs-directory "straight/build/"
-                                  (symbol-name feature)))
-  (require feature))
+(defmacro toki-declare-ext-pkg (feature)
+  "Require a feature from external packages.
+This is for site-lisps that requires external packages."
+  `(eval-when-compile
+     (add-to-list 'load-path ,(concat user-emacs-directory "straight/build/"
+                                      (symbol-name feature)))))
 
 (let* (;; Dir & files
        (site-lisp-dir (concat user-emacs-directory "site-lisp/"))

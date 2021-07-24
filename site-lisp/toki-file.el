@@ -13,7 +13,8 @@
 
 ;;;; Libraries
 
-(toki-require-ext-pkg 'consult)
+(toki-declare-ext-pkg consult)
+(require 'consult)
 
 ;;;; User options
 

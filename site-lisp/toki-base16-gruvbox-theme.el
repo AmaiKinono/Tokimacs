@@ -1,6 +1,7 @@
 ;; lexical-binding: t; -*-
 
-(toki-require-ext-pkg 'base16-theme)
+(toki-declare-ext-pkg base16-theme)
+(require 'base16-theme)
 
 (defvar toki-base16-gruvbox-colors
     '(:base00 "#1d2021"
