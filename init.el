@@ -20,6 +20,7 @@
     "editor/ui"        ;; Tidy & beautiful UI
     "editor/file"      ;; File management
     "editor/edit"      ;; Fine & structural editing
+    "app/term"         ;; Terminal emulator
     ))
 
 (dolist (module toki-modules)
