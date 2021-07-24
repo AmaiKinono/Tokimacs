@@ -204,6 +204,43 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
 
 ;;; Package manager
 
+;;;; Straight.el
+
+;; Straight.el is a package manager that download packages by cloning their
+;; repo, and has many nice features.
+
+(setq
+ straight-use-package-by-default t
+ straight-vc-git-default-clone-depth 1
+ straight-check-for-modifications '(check-on-save find-when-checking))
+
+(defvar bootstrap-version)
+(let ((bootstrap-file
+       (expand-file-name "straight/repos/straight.el/bootstrap.el"
+                         user-emacs-directory))
+      (bootstrap-version 5))
+  (unless (file-exists-p bootstrap-file)
+    (with-current-buffer
+        (url-retrieve-synchronously
+         "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
+         'silent 'inhibit-cookies)
+      (goto-char (point-max))
+      (eval-print-last-sexp)))
+  (load bootstrap-file nil 'nomessage))
+
+(defun toki-update-package (package)
+  "Normalize and pull package from upstream."
+  (interactive (list (straight--select-package
+                      "Update package" nil 'installed)))
+  (straight-normalize-package package)
+  (straight-pull-package package 'from-upstream))
+
+(defun toki-update-all ()
+  "Normalize and pull all packages from upstream."
+  (interactive)
+  (straight-normalize-all)
+  (straight-pull-all 'from-upstream))
+
 ;;;; Site-lisp
 
 ;; The site-lisp directory is where we put our own packages.  We byte-compile
@@ -265,45 +302,9 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
       (when-let ((buf (find-buffer-visiting generated-autoload-file)))
         (kill-buffer buf))
       (byte-compile-file (concat build-dir "autoloads.el")))
+    (add-to-list 'custom-theme-load-path build-dir)
     ;; Load autoload file
     (load (concat build-dir "autoloads") 'noerror 'nomessage)))
-
-;;;; Straight.el
-
-;; Straight.el is a package manager that download packages by cloning their
-;; repo, and has many nice features.
-
-(setq
- straight-use-package-by-default t
- straight-vc-git-default-clone-depth 1
- straight-check-for-modifications '(check-on-save find-when-checking))
-
-(defvar bootstrap-version)
-(let ((bootstrap-file
-       (expand-file-name "straight/repos/straight.el/bootstrap.el"
-                         user-emacs-directory))
-      (bootstrap-version 5))
-  (unless (file-exists-p bootstrap-file)
-    (with-current-buffer
-        (url-retrieve-synchronously
-         "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
-         'silent 'inhibit-cookies)
-      (goto-char (point-max))
-      (eval-print-last-sexp)))
-  (load bootstrap-file nil 'nomessage))
-
-(defun toki-update-package (package)
-  "Normalize and pull package from upstream."
-  (interactive (list (straight--select-package
-                      "Update package" nil 'installed)))
-  (straight-normalize-package package)
-  (straight-pull-package package 'from-upstream))
-
-(defun toki-update-all ()
-  "Normalize and pull all packages from upstream."
-  (interactive)
-  (straight-normalize-all)
-  (straight-pull-all 'from-upstream))
 
 ;;; Basic packages
 
