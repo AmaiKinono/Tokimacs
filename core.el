@@ -258,7 +258,9 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
        (site-lisp-dir (concat user-emacs-directory "site-lisp/"))
        (build-dir (progn (make-directory (concat site-lisp-dir ".build/") t)
                          (concat site-lisp-dir ".build/")))
-       (build-files (directory-files build-dir))
+       (site-lisp-files (directory-files site-lisp-dir nil ".el$"))
+       (site-lisp-symlinks (directory-files build-dir nil ".el$"))
+       (byte-compiled-files (directory-files build-dir nil ".elc$"))
        (newer-lisp-file nil)
        (delete-by-moving-to-trash nil)
        ;; Don't bother me.
@@ -275,20 +277,30 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
             ((symbol-function #'byte-compile-log-file) #'ignore)
             ((symbol-function #'byte-compile-log-warning) #'ignore))
     (add-to-list 'load-path build-dir)
-    (dolist (file (directory-files site-lisp-dir))
-      (unless (string-prefix-p "." file)
-        ;; Make symlinks of site-lisp files in build-dir.  This is needed for
-        ;; `byte-compile-file' and `update-directory-autoloads'.
-        (unless (member file build-files)
-          (make-symbolic-link (concat site-lisp-dir file)
-                              (concat build-dir file)))
-        ;; Byte compile
-        (let ((byte-file (concat build-dir
-                                 (file-name-sans-extension file)
-                                 ".elc")))
-          (when (file-newer-than-file-p (concat site-lisp-dir file) byte-file)
-            (setq newer-lisp-file t)
-            (byte-compile-file (concat build-dir file))))))
+    (let ((unneeded-symlinks
+           (cl-set-difference site-lisp-symlinks
+                              site-lisp-files)))
+      (dolist (f unneeded-symlinks)
+        (delete-file (concat build-dir f))))
+    (let ((unneeded-byte-files
+           (cl-set-difference byte-compiled-files
+                              (mapcar (lambda (s) (concat s "c"))
+                                      site-lisp-files))))
+      (dolist (f unneeded-byte-files)
+        (delete-file (concat build-dir f))))
+    (dolist (f site-lisp-files)
+      ;; Make symlinks of site-lisp files in build-dir.  This is needed for
+      ;; `byte-compile-file' and `update-directory-autoloads'.
+      (unless (member f site-lisp-symlinks)
+        (make-symbolic-link (concat site-lisp-dir f)
+                            (concat build-dir f)))
+      ;; Byte compile
+      (let ((byte-file (concat build-dir f "c"))
+            (site-lisp (concat site-lisp-dir f)))
+        (when (or (not (file-exists-p byte-file))
+                  (file-newer-than-file-p site-lisp byte-file))
+          (setq newer-lisp-file t)
+          (byte-compile-file (concat build-dir f)))))
     ;; Generate autoload file
     (when newer-lisp-file
       ;; I don't know why but `update-directory-autoloads' seems to not work
