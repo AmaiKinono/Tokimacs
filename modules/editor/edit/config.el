@@ -45,53 +45,182 @@
 
 ;;; Search & Replace
 
-;; CTRLF is a single-buffer text search tool.  Currently it's alpha-quality,
-;; and can't do replace.
-(use-package ctrlf
-  :straight (:host github :repo "raxod502/ctrlf")
-  :defer t
-  ;; CTRLF doesn't do autoload now, so we do it manually.
-  :commands (ctrlf-forward ctrlf-backward
-             ctrlf-forward-fuzzy ctrlf-backward-fuzzy
-             ctrlf-forward-regexp ctrlf-backward-regexp
-             ctrlf-forward-fuzzy-regexp ctrlf-backward-fuzzy-regexp
-             ctrlf-mode)
-  :init
-  (toki-search-def
-    "s" '(ctrlf-forward-fuzzy-regexp :wk "Search")
-    "S" '(ctrlf-forward-fuzzy :wk "Literal Search"))
-  (general-def
-    "C-/" 'ctrlf-forward-fuzzy-regexp)
+;;;; Search
+
+;; Isearch is the Emacs built-in primary search & replace interface.  It's
+;; default UI has serious usability problem:
+
+;; - You can only use backspace to modify the search query.
+;; - While searching, if you type any non-isearch command, it quits the search
+;;   session.
+;; - There's an `isearch-edit-string' command, which allows editing search
+;;   query in the minibuffer.  Unfortunately, while doing this, the matches in
+;;   the buffer don't update as you type.
+
+;; Isearch-mb lets you edit your search query in the minibuffer, by default,
+;; with the matches update as you type.  This is the right design.
+
+(use-package isearch-mb
+  :trigger pre-command-hook
   :config
-  (face-spec-set 'ctrlf-highlight-active
-                 '((((background light))
-                    :background "#ff74a4" :foreground "#eeeeee" :bold t)
-                   (t
-                    :background "#ffb0bb" :foreground "#111111" :bold t))
-                 'face-defface-spec)
-  (face-spec-set 'ctrlf-highlight-passive
-                 '((((background light))
-                    :background "#87ceeb" :foreground "#222222")
-                   (t
-                    :background "#4367a5" :foreground "#dddddd"))
-                 'face-defface-spec)
-  (face-spec-set 'ctrlf-highlight-line
-                 '((((background light))
-                    :background "#e4e4e4")
-                   (t
-                    :background "#444444")))
-  (toki/setq
-   ctrlf-auto-recenter t
-   ctrlf-minibuffer-bindings
-   '(([remap abort-recursive-edit]     . ctrlf-cancel)
-     ([remap minibuffer-keyboard-quit] . ctrlf-cancel)
-     ([remap beginning-of-buffer]      . ctrlf-first-match)
-     ([remap end-of-buffer]            . ctrlf-last-match)
-     ("C-n"       . ctrlf-next-match)
-     ("TAB"       . ctrlf-next-match)
-     ("C-p"       . ctrlf-previous-match)
-     ("S-TAB"     . ctrlf-previous-match)
-     ("<backtab>" . ctrlf-previous-match))))
+  (toki/setq-default
+   isearch-lazy-count t)
+  (general-def
+    :keymaps 'isearch-mb-minibuffer-map
+    "C-n" 'isearch-repeat-forward
+    "C-p" 'isearch-repeat-backward
+    "C-." 'toki-search-insert-.*)
+  (toki-local-def
+    :keymaps 'isearch-mb-minibuffer-map
+    "r" '(isearch-query-replace :wk "Replace")
+    "C-j" '(newline :wk "[Newline]")
+    "." '(toki-search-insert-.* :wk "[.*]")
+    "a" '(toki-search-insert-anychar :wk "[Anychar]")
+    "g" '(toki-search-insert-group :wk "[Group]")
+    "w" '(toki-search-wrap-word-boundary :wk "(Word Bounds)")
+    "s" '(toki-search-wrap-symbol-boundary :wk "(Symbol Bounds)")
+    "C" '(isearch-toggle-case-fold :wk "<> Case Fold")
+    "R" '(isearch-toggle-regexp :wk "<> Regexp Search"))
+  (define-advice isearch-mb--update-prompt (:around (fn &rest _) show-case-fold-info)
+    "Show case fold info in the prompt."
+    (when isearch-mb--prompt-overlay
+      (let ((count (isearch-lazy-count-format))
+            (len (or (overlay-get isearch-mb--prompt-overlay 'isearch-mb--len) 0)))
+        (overlay-put isearch-mb--prompt-overlay
+                     'isearch-mb--len (max len (length count)))
+        (overlay-put isearch-mb--prompt-overlay
+                     'before-string
+                     (concat count ;; Count is padded so that it only grows.
+                             (make-string (max 0 (- len (length count))) ?\ )
+                             ;; PATCH
+                             (if isearch-case-fold-search "[Case Fold] " "")
+                             (capitalize
+                              (isearch--describe-regexp-mode
+                               isearch-regexp-function)))))))
+
+  (isearch-mb-mode))
+
+(with-eval-after-load 'isearch-mb
+  (defun toki-search-insert-.* ()
+    "Insert \".*\"."
+    (interactive)
+    (insert ".*"))
+
+  (defun toki-search-insert-anychar ()
+    "Insert regexp for anychar including newline."
+    (interactive)
+    (insert "[^z-a]"))
+
+  (defun toki-insert-group ()
+    "Insert a pair of regexp group delimiter, or wrap them around active region."
+    (interactive)
+    (when (use-region-p)
+      (save-excursion
+        (goto-char (region-beginning))
+        (insert "\\(")
+        (goto-char (region-end))
+        (insert "\\)"))
+      (insert "\\(\\)")))
+
+  (defun toki-search-wrap-word-boundary ()
+    "Wrap active region or the search query inside a pair of word boundary."
+    (interactive)
+    (save-excursion
+      (goto-char (if (use-region-p) (region-beginning) (minibuffer-prompt-end)))
+      (insert "\\<")
+      (goto-char (if (use-region-p) (region-end) (point-max)))
+      (insert "\\>")))
+
+  (defun toki-search-wrap-symbol-boundary ()
+    "Wrap active region or the search query inside a pair of symbol boundary."
+    (interactive)
+    (save-excursion
+      (goto-char (if (use-region-p) (region-beginning) (minibuffer-prompt-end)))
+      (insert "\\_<")
+      (goto-char (if (use-region-p) (region-end) (point-max)))
+      (insert "\\_>"))))
+
+;;;; Replace
+
+;; Emacs has complex "smart" case treatment for replacing (see FIXEDCASE arg in
+;; `replace-match').  I call it "soft case".  Here are some hacks so when using
+;; edit the replacement string, the user could see if soft/hard case is being
+;; used.
+
+(defvar toki-replace-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map minibuffer-local-map)
+    map)
+  "Keymap used for `query-replace-read-to'.")
+
+(toki-local-def
+  :keymaps 'toki-replace-map
+  "m" '(toki-replace-insert-whole-match :wk "[Whole Match]")
+  "c" '(toki-replace-insert-counter :wk "[Counter]")
+  "i" '(toki-replace-insert-user-input :wk "[User Input]")
+  "l" '(toki-replace-insert-lisp-expression :wk "[Lisp]")
+  "C" '(toki-replace-toggle-soft-case :wk "<> Soft Case"))
+
+(defvar toki/replace-ol nil)
+
+(defvar toki/case-replace-orig nil)
+
+(defun toki/replace-minibuffer-setup-hook ()
+  (setq toki/case-replace-orig case-replace)
+  (when toki/replace-ol
+    (delete-overlay toki/replace-ol))
+  (setq toki/replace-ol (make-overlay (point-min) (point-min) (current-buffer)))
+  (toki/replace-minibuffer-update-ol)
+  (add-hook 'post-command-hook #'toki/replace-minibuffer-update-ol nil 'local)
+  (add-hook 'minibuffer-exit-hook #'toki/replace-minibuffer-exit-hook))
+
+(defun toki/replace-minibuffer-update-ol ()
+  (overlay-put toki/replace-ol 'before-string
+               (if (and case-replace case-fold-search)
+                   "[Soft Case] " "[Hard Case] ")))
+
+(defun toki/replace-minibuffer-exit-hook ()
+  (remove-hook 'post-command-hook #'toki/replace-minibuffer-update-ol 'local)
+  (remove-hook 'minibuffer-exit-hook #'toki/replace-minibuffer-exit-hook 'local)
+  (setq case-replace toki/case-replace-orig)
+  (when toki/replace-ol
+    (delete-overlay toki/replace-ol)
+    (setq toki/replace-ol nil)))
+
+(define-advice query-replace-read-to (:around (fn from prompt regexp-flag)
+                                              prompt-and-keymap)
+  (minibuffer-with-setup-hook
+      #'toki/replace-minibuffer-setup-hook
+    (let ((minibuffer-local-map toki-replace-map))
+      (funcall fn from prompt regexp-flag))))
+
+(defun toki-replace-toggle-soft-case ()
+  "Toggle soft case for replace."
+  (interactive)
+  (setq case-replace (not case-replace)))
+
+(defun toki-replace-insert-whole-match ()
+  "Insert a snippet that means the whole match."
+  (interactive)
+  (insert "\\&"))
+
+(defun toki-replace-insert-counter ()
+  "Insert a snippet that works as a counter from 0."
+  (interactive)
+  (insert "\\#"))
+
+(defun toki-replace-insert-user-input ()
+  "Insert a snippet that requires user input for every replacement."
+  (interactive)
+  (insert "\\?"))
+
+(defun toki-replace-insert-lisp-expression ()
+  "Insert a lisp expression."
+  (interactive)
+  (insert "\\,()")
+  (backward-char))
+
+;;;; Misc replace commands
 
 (defun toki-replace-string-fold ()
   "Replace string in buffer or region, with case folded.
@@ -130,6 +259,8 @@ See the docstring of `replace-string' for details."
         (call-interactively #'replace-string)))))
 
 (toki-search-def
+  "s" '(isearch-forward-regexp :wk "Search Regexp")
+  "S" '(isearch-forward :wk "Search Literally")
   "r" '(toki-replace-string-fold :wk "Replace String")
   "R" '(toki-replace-string-strictly :wk "Replace String (Strictly)"))
 
@@ -315,7 +446,9 @@ these codes."
   "C-t" 'toki-smooth-scroll-half-page-down
   "C-l" 'toki-recenter
   ;; Mark
-  "M-m" 'set-mark-command)
+  "M-m" 'set-mark-command
+  ;; Search
+  "C-/" 'isearch-forward-regexp)
 
 (toki-edit-def
  "u" '(undo-propose :wk "Browse Undo History")
