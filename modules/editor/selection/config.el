@@ -5,6 +5,8 @@
 ;; Copyright (C) 2021 Hao Wang
 ;; License: GPL v3, or (at your option) any later version
 
+(setq enable-recursive-minibuffers t)
+
 (use-package vertico
   :trigger pre-command-hook
   :config
@@ -28,9 +30,11 @@
 
 (use-package consult
   :defer t
+  :init
+  (setq
+   completion-in-region-function #'consult-completion-in-region)
   :config
   (setq
-   completion-in-region-function #'consult-completion-in-region
    consult-project-root-function #'toki-project-root
    consult-async-min-input 2))
 

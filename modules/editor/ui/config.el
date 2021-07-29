@@ -424,8 +424,8 @@ When fullscreen, show time and battery information in the echo area."
 ;;; Keybinds
 
 (toki-ui-def
-  "f" '(toki-toggle-fullscreen :wk "= Fullscreen")
-  "m" '(toggle-frame-maximized :wk "= Maximize")
+  "f" '(toki-toggle-fullscreen :wk "<> Fullscreen")
+  "m" '(toggle-frame-maximized :wk "<> Maximize")
   "t" `(,(toki/make-combo toki-switch-theme) :wk "Switch Theme")
   "T" '(toki-load-theme :wk "Load Theme")
   "=" `(,(toki/make-combo toki-increase-font-size) :wk "Increase Font Size")

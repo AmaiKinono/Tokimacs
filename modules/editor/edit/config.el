@@ -24,7 +24,7 @@
   :init
   (general-def
     "C-z" 'undo-fu-only-undo
-    "C-u" 'undo-fu-only-redo)
+    "C-S-z" 'undo-fu-only-redo)
   :config
   (toki/setq
    undo-fu-ignore-keyboard-quit t))
