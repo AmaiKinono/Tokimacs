@@ -12,6 +12,9 @@
   :config
   (toki/setq
    vertico-count 8)
+  (general-def
+    :keymaps 'vertico-map
+    "C-c" 'vertico-save)
   (face-spec-set 'vertico-current
                  '((((background light))
                     :background "#d8d8d8" :extend t)
