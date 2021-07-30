@@ -45,3 +45,6 @@
   (toki-local-def
    :keymaps 'minibuffer-local-map
    "c" `(,(toki/make-combo marginalia-cycle) :wk "Cycle Annotation")))
+
+(toki-leader-def
+  "SPC" 'execute-extended-command)

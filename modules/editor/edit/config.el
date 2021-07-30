@@ -320,7 +320,7 @@ See the docstring of `replace-string' for details."
 ;; whitespace, see the configuration below.
 (use-package whitespace
   :straight nil
-  :trigger find-file-noselect
+  :trigger after-init-hook
   :config
   (global-whitespace-mode)
   ;; Don't use different background for tabs.
