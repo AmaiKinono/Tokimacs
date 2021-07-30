@@ -50,4 +50,4 @@
    "c" `(,(toki/make-combo marginalia-cycle) :wk "Cycle Annotation")))
 
 (toki-leader-def
-  "SPC" 'execute-extended-command)
+  "SPC" '(execute-extended-command :wk "M-x"))

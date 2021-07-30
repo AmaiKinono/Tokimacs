@@ -340,20 +340,11 @@ See the docstring of `replace-string' for details."
   (face-spec-set 'whitespace-tab
                  '((t :background unspecified)))
 
-  ;; Only use background and underline for long lines, so we can still have
+  ;; Only use underline for long lines, so we can still have
   ;; syntax highlight.
-
-  ;; For some reason use face-defface-spec as spec-type doesn't work.  My guess
-  ;; is it's due to the variables with the same name as the faces in
-  ;; whitespace.el.  Anyway, we have to manually set some attribute to
-  ;; unspecified here.
   (face-spec-set 'whitespace-line
-                 '((((background light))
-                    :background "#d8d8d8" :foreground unspecified
-                    :underline t :weight unspecified)
-                   (t
-                    :background "#404040" :foreground unspecified
-                    :underline t :weight unspecified)))
+                 '((t :background unspecified :foreground unspecified
+                      :underline t :weight unspecified)))
 
   ;; Use softer visual cue for trailing whitespaces.
   (face-spec-set 'trailing-whitespace
@@ -427,7 +418,7 @@ these codes."
               :teardown (general-override-mode))))
 
 (toki-leader-def
-  "C-x" 'Control-X-prefix
+  "C-x" '(Control-X-prefix :wk "C-x")
   "C-c" (general-key "C-c"
           :setup (general-override-mode -1)
           :teardown (general-override-mode)))
@@ -436,9 +427,7 @@ these codes."
 ;; https://github.com/justbur/emacs-which-key/issues/177.  This is a workaround
 ;; that puts both C-c/C-x descriptions under C-x.
 (with-eval-after-load 'which-key
-  (push (cons
-         (cons (concat "\\`" toki-leader-key " C-x\\'") nil)
-         '("C-x/C-c" . "C-x/C-c"))
+  (push '(("C-c" . nil) . (nil . "C-c"))
         which-key-replacement-alist))
 
 (general-def
