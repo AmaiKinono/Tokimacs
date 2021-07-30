@@ -5,6 +5,8 @@
 ;; Copyright (C) 2021 Hao Wang
 ;; License: GPL v3, or (at your option) any later version
 
+(require 'rx)
+
 ;;; Defaults
 
 (setq-default
@@ -319,6 +321,33 @@ See the docstring of `replace-string' for details."
   :trigger pre-command-hook
   :config
   (electric-pair-mode))
+
+;; paren shows matching parens.
+(use-package paren
+  :straight nil
+  :trigger pre-command-hook
+  :init
+  ;; NOTE: I just can't find a good way to redefine a face.  I know
+  ;; `face-spec-set', I know there are face-related standard properties of
+  ;; symbols, I know `theme-face' is kind of a hidden spec of a face...  But I
+  ;; can't come up with a way to redefine a face.  We must manually set
+  ;; something to `unspecified'.
+  (face-spec-set 'show-paren-match
+                 '((t :foreground unspecified :background unspecified
+                      :inherit error)))
+  :config
+  (define-advice show-paren-function (:around (fn) fix)
+    "Highlight enclosing parens when point is inside them."
+    (if (looking-at-p (rx (* white) (syntax open-parenthesis)))
+        (funcall fn)
+      (save-excursion
+        (ignore-errors (backward-up-list))
+        (funcall fn))))
+  (toki/setq
+   show-paren-when-point-in-periphery t
+   show-paren-when-point-inside-paren t)
+
+  (show-paren-mode))
 
 ;;; Misc
 
