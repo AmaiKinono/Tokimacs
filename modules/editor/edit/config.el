@@ -21,10 +21,6 @@
 ;; commands that we would expect in a normal editor or word-processor.
 (use-package undo-fu
   :defer t
-  :init
-  (general-def
-    "C-z" 'undo-fu-only-undo
-    "C-S-z" 'undo-fu-only-redo)
   :config
   (toki/setq
    undo-fu-ignore-keyboard-quit t))
@@ -258,12 +254,6 @@ See the docstring of `replace-string' for details."
         (goto-char (point-min))
         (call-interactively #'replace-string)))))
 
-(toki-search-def
-  "s" '(isearch-forward-regexp :wk "Search Regexp")
-  "S" '(isearch-forward :wk "Search Literally")
-  "r" '(toki-replace-string-fold :wk "Replace String")
-  "R" '(toki-replace-string-strictly :wk "Replace String (Strictly)"))
-
 ;; TODO: grep integration
 
 ;;; Structural editing
@@ -423,6 +413,9 @@ these codes."
         which-key-replacement-alist))
 
 (general-def
+  ;; Undo/Redo
+  "C-z" 'undo-fu-only-undo
+  "C-S-z" 'undo-fu-only-redo
   ;; Word
   "M-f" 'toki-forward-word
   "M-b" 'toki-backward-word
@@ -449,6 +442,12 @@ these codes."
   "M-m" 'set-mark-command
   ;; Search
   "C-/" 'isearch-forward-regexp)
+
+(toki-search-def
+  "s" '(isearch-forward-regexp :wk "Search Regexp")
+  "S" '(isearch-forward :wk "Search Literally")
+  "r" '(toki-replace-string-fold :wk "Replace String")
+  "R" '(toki-replace-string-strictly :wk "Replace String (Strictly)"))
 
 (toki-edit-def
  "u" '(undo-propose :wk "Browse Undo History")
