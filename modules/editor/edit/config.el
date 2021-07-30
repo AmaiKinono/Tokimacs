@@ -185,10 +185,23 @@
 
 (define-advice query-replace-read-to (:around (fn from prompt regexp-flag)
                                               prompt-and-keymap)
+  "Show prompt for soft/hard case, and use our `toki-replace-map'.
+See the docstring about FIXEDCASE in `replace-match' to know about
+soft/hard case.  Non-nil FIXEDCASE equals \"hard case\"."
   (minibuffer-with-setup-hook
       #'toki/replace-minibuffer-setup-hook
     (let ((minibuffer-local-map toki-replace-map))
       (funcall fn from prompt regexp-flag))))
+
+(define-advice perform-replace (:around (fn &rest args) dont-exit-on-anykey)
+  "Don't exit replace for anykey that's not in `query-replace-map'."
+  (cl-letf* ((lookup-key-orig
+              (symbol-function 'lookup-key))
+             ((symbol-function 'lookup-key)
+              (lambda (map key &optional accept-default)
+                (or (apply lookup-key-orig map key accept-default)
+                    (when (eq map query-replace-map) 'help)))))
+    (apply fn args)))
 
 (defun toki-replace-toggle-soft-case ()
   "Toggle soft case for replace."
