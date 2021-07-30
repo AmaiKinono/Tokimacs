@@ -79,6 +79,17 @@ See `consult-find-command'.")
                          (complete-with-action action files str pred)))))
     (find-file (completing-read "Find file in Tokimacs: " collection))))
 
+;; Ref: http://ergoemacs.org/emacs/emacs_new_empty_buffer.html
+;;;###autoload
+(defun toki-new-file ()
+  "Create an untitled file."
+  (interactive)
+  (let ((buf (generate-new-buffer "untitled")))
+    (switch-to-buffer buf)
+    (funcall initial-major-mode)
+    (setq buffer-offer-save t)
+    buf))
+
 (provide 'toki-file)
 
 ;;; toki-file.el ends here
