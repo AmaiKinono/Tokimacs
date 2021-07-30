@@ -178,7 +178,16 @@ This doesn't affect Emacs in terminal.")
   :init
   (toki/setq
    base16-distinct-fringe-background nil)
-  :defer t)
+  :defer t
+  :config
+  (define-advice base16-theme-define (:around (fn theme-name theme-colors) fix)
+    (base16-set-faces
+     theme-name theme-colors
+     ;; Cursor should be light (on dark themes, vice versa).
+     '((cursor :background base06)
+       ;; Error should be in the same color as keywords.
+       (error :foreground base0E)))
+    (funcall fn theme-name theme-colors)))
 
 (use-package toki-base16-gruvbox-theme
   :straight nil
