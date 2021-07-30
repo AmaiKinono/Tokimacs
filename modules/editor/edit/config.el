@@ -216,6 +216,22 @@
   (insert "\\,()")
   (backward-char))
 
+(setq query-replace-help
+      "<Replace>
+[y/SPC] replace                         [!] replace all remaining
+[.] replace only one                    [,] replace and not move to next
+<Exit>
+[q/RET] exit
+<Move>
+[n/DEL] next          [^] prev          [C-l] recenter
+<Undo>
+[u] undo previous                       [U] undo all
+<Edit>
+[C-r] recursive edit                    [\\[exit-recursive-edit]]: exit recursive edit
+[C-w]: delete match and recursive edit  [E]: edit the replacement string.
+<Multi-file replace>
+[Y]: replace all in remaining buffers   [N]: skip to the next buffer")
+
 ;;;; Misc replace commands
 
 (defun toki-replace-string-fold ()
