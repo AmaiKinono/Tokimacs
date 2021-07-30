@@ -154,11 +154,16 @@ Customize `toki-blink-color', `toki-blink-fade-time',
                         #'toki/blink-tab-line-fade)))
 ;;;###autoload
 (defun toki-recenter ()
-  "Recenter current line.
-If `toki-blink' is required, blink."
-  (interactive)
-  (recenter)
-  (toki-blink))
+  "Recenter and blink current line.
+When point is in minibuffer, operate on the window selected
+before entering minibuffer."
+       (interactive)
+       (if (minibufferp)
+           (with-selected-window (minibuffer-selected-window)
+             (recenter)
+             (toki-blink))
+         (recenter)
+         (toki-blink)))
 
 (provide 'toki-blink)
 
