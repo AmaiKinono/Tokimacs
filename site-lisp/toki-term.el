@@ -76,39 +76,43 @@ This is like `term' but with several tweaks to make you happier."
                    (getenv "SHELL") shell-file-name
                    (read-file-name "Shell executable: " "/" nil t)))
          (dir (or dir (funcall toki-term-project-root-function) default-directory))
-         buf buflist)
-    (setq dir (expand-file-name dir))
-    (dolist (buf (buffer-list))
-      (with-current-buffer buf
-        (when (and (derived-mode-p 'term-mode)
-                   (equal (expand-file-name default-directory) dir))
-          (push buf buflist))))
+         (default-dir (file-truename default-directory))
+         buflist target)
+    (setq dir (file-truename dir))
+    (unless (derived-mode-p 'term-mode)
+      (dolist (buf (buffer-list))
+        (with-current-buffer buf
+          (when (and (derived-mode-p 'term-mode)
+                     (equal default-dir dir)
+                     ;; Make sure the term isn't running any program.
+                     (not (process-running-child-p (get-buffer-process buf))))
+            (push buf buflist)))))
     (cond
      ((eq (length buflist) 1)
-      (y-or-n-p (format "%s is visiting %s.  Use it instead? "
-                        (buffer-name (car buflist)) dir))
-      (pop-to-buffer (car buflist)))
+      (when (y-or-n-p (format "%s is visiting %s.  Use it instead? "
+                              (buffer-name (car buflist)) dir))
+        (setq target (car buflist))))
      ((> (length buflist) 1)
-      (y-or-n-p (format "Some terminals is visiting %s.  Pick one of them? "
-                        dir))
-      (pop-to-buffer
-       (read-buffer "Term buffer: " nil t
-                    (lambda (buf)
-                      (memq (if (consp buf) (cdr buf) (get-buffer buf))
-                            buflist)))))
-     (t
-      (setq buf (generate-new-buffer "*term*"))
-      (with-current-buffer buf
+      (when (y-or-n-p (format "Some terminals is visiting %s.  Pick one of them? "
+                              dir))
+        (setq target
+              (read-buffer "Term buffer: " nil t
+                           (lambda (buf)
+                             (memq (if (consp buf) (cdr buf) (get-buffer buf))
+                                   buflist)))))))
+    (unless target
+      (setq target (generate-new-buffer "*term*"))
+      (with-current-buffer target
         (let ((default-directory dir))
           (term-mode)
-          (term-exec buf (buffer-name) prog nil nil)
+          (term-exec target (buffer-name) prog nil nil)
           (term-char-mode)))
       ;; If the user calls `ansi-term' before, undo its call to
       ;; `term-set-escape-char'.
       (when term-escape-char
         (toki-term-remove-escape-char)
-        (toki-term-setup-escape-keys))
-      (pop-to-buffer buf)))))
+        (toki-term-setup-escape-keys)))
+    (pop-to-buffer target)))
 
 ;;;###autoload
 (defun toki-term-in-dir ()
