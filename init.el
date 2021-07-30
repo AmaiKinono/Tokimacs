@@ -20,6 +20,7 @@
     "editor/ui"        ;; Tidy & beautiful UI
     "editor/file"      ;; File management
     "editor/edit"      ;; Fine & structural editing
+    "editor/evil"      ;; Vim emulator
     "app/term"         ;; Terminal emulator
     ))
 

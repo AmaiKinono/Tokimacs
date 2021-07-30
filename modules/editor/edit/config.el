@@ -442,9 +442,12 @@ these codes."
         which-key-replacement-alist))
 
 (general-def
+  :keymaps 'override
   ;; Undo/Redo
   "C-z" 'undo-fu-only-undo
-  "C-S-z" 'undo-fu-only-redo
+  "C-S-z" 'undo-fu-only-redo)
+
+(general-def
   ;; Word
   "M-f" 'toki-forward-word
   "M-b" 'toki-backward-word
