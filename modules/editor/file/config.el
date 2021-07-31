@@ -252,6 +252,7 @@ in order to have the right face colors."
   "k" '(kill-current-buffer :wk "Kill This")
   "K" '(toki-kill-another-buffer :wk "Kill Another")
   "b" '(consult-buffer :wk "Switch Buffer")
+  "p" '(previous-buffer :wk "Prev Buffer")
   "s" '(toki-send-buf-to-window :wk "Send to Window")
   "c" '(toki-copy-buf-to-window :wk "Copy to Window"))
 
