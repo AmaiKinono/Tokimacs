@@ -133,7 +133,7 @@ more than 2, it will ask for the number of the window."
 
   (defun toki-buffer-group ()
     "An `awesome-tab-buffer-groups-function' that group buffers by projects."
-    (awesome-tab-get-group-name (current-buffer)))
+    (list (awesome-tab-get-group-name (current-buffer))))
   (toki/setq awesome-tab-buffer-groups-function #'toki-buffer-group)
 
   ;; show window numbers on the header line.
@@ -163,17 +163,6 @@ in order to have the right face colors."
     (interactive)
     (toki-refresh-win-num)
     (awesome-tab-refresh-display))
-
-  (defun toki-awesome-tab-buffer-groups-function ()
-    "Group rules for awesome-tab."
-    (cond
-     ((or (string-equal "*Help*" (buffer-name))
-          (string-equal "*ielm*" (buffer-name)))
-      (list "Elisp"))
-     (t
-      (awesome-tab-buffer-groups))))
-
-  (toki/setq awesome-tab-buffer-groups-function #'toki-awesome-tab-buffer-groups-function)
 
   (add-hook 'toki-after-load-theme-hook #'toki-refresh-tabs)
   (add-hook 'after-change-major-mode-hook #'toki-refresh-tabs)
