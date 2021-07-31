@@ -312,26 +312,6 @@ See the docstring of `replace-string' for details."
   :straight nil
   :trigger after-init-hook
   :config
-  (defun toki-forward-punct-or-delim ()
-    (interactive)
-    (if prog-mode
-        (toki-forward-list-delimiter)
-      (toki-forward-punct)))
-  (defun toki-backward-punct-or-delim ()
-    (interactive)
-    (if prog-mode
-        (toki-backward-list-delimiter)
-      (toki-backward-punct)))
-  (defun toki-forward-subsentence-or-punct ()
-    (interactive)
-    (if prog-mode
-        (toki-forward-punct)
-      (toki-forward-subsentence)))
-  (defun toki-backward-subsentence-or-punct ()
-    (interactive)
-    (if prog-mode
-        (toki-backward-punct)
-      (toki-backward-subsentence)))
   (toki-global-sedit-mode))
 
 (use-package elec-pair
@@ -512,8 +492,8 @@ these codes."
   ;; Sentence
   "M-\"" 'toki-forward-subsentence-or-punct
   "M-'" 'toki-backward-subsentence-or-punct
-  "M-." 'toki-forward-punct-or-delim
-  "M-," 'toki-backward-punct-or-delim
+  "M-." 'toki-forward-punct
+  "M-," 'toki-backward-punct
   ;; Paragraph
   "M-n" 'forward-paragraph
   "M-p" 'backward-paragraph

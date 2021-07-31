@@ -55,6 +55,13 @@ This returns nil if point is before/in the opening delimiter, or
 after/in the end delimiter."
   (eq (syntax-ppss-context (syntax-ppss)) 'comment))
 
+(defun toki/in-interval-p (num interval)
+  "Return t if NUM is inside INTERVAL.
+INTERVAL is a cons pair of numbers, with the cdr larger than the
+car.  NUM is not inside INTERVAL if it's the beginning or end of
+INTERVAL."
+  (< (car interval) num (cdr interval)))
+
 ;;;;; Syntax
 
 ;; Ref: https://www.gnu.org/software/emacs/manual/html_node/elisp/Syntax-Class-Table.html
@@ -544,16 +551,20 @@ line."
 
 ;;;###autoload
 (defun toki-forward-punct ()
-  "Jump to next punctuation."
+  "Jump to next punctuation that's not inside a symbol."
   (interactive)
   ;; For some reason \"：\" is not considered as a punctuation.
-  (re-search-forward "[[:punct:]]\\|："))
+  (while (and (re-search-forward "[[:punct:]]\\|：")
+              (toki/in-interval-p (point)
+                                  (bounds-of-thing-at-point 'symbol)))))
 
 ;;;###autoload
 (defun toki-backward-punct ()
-  "Jump to previous punctuation."
+  "Jump to previous punctuation that's not inside a symbol."
   (interactive)
-  (re-search-backward "[[:punct:]]\\|："))
+  (while (and (re-search-backward "[[:punct:]]\\|：")
+              (toki/in-interval-p (point)
+                                  (bounds-of-thing-at-point 'symbol)))))
 
 ;;;###autoload
 (defun toki-forward-subsentence ()
