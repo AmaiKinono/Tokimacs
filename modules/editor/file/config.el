@@ -257,10 +257,10 @@ in order to have the right face colors."
   "c" '(toki-copy-buf-to-window :wk "Copy to Window"))
 
 (toki-tab-def
-  "b" '(awesome-tab-backward-tab :wk "Backward Tab")
-  "f" '(awesome-tab-forward-tab :wk "Forward Tab")
-  "n" '(awesome-tab-forward-group :wk "Forward Group")
-  "p" '(awesome-tab-backward-group :wk "Backward Group")
+  "b" `(,(toki/make-combo awesome-tab-backward-tab) :wk "Prev Tab")
+  "f" `(,(toki/make-combo awesome-tab-forward-tab) :wk "Next Tab")
+  "p" `(,(toki/make-combo awesome-tab-backward-group) :wk "Prev Group")
+  "n" `(,(toki/make-combo awesome-tab-forward-group) :wk "Next Group")
   "a" '(awesome-tab-select-beg-tab :wk "Select Beginning Tab")
   "A" '(awesome-tab-move-current-tab-to-beg :wk "Move Tab to Beginning")
   "j" '(awesome-tab-ace-jump :wk "Jump to Tab"))
