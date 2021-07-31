@@ -390,6 +390,9 @@ This is for site-lisps that requires external packages."
 (defvar toki-edit-key "e"
   "For misc editing/Emacs related commands.")
 
+(defvar toki-elisp-key "x"
+  "For elisp related commands.")
+
 (defvar toki-file-key "f"
   "For file commands.")
 
@@ -449,6 +452,10 @@ This is for site-lisps that requires external packages."
     :prefix (concat toki-leader-key " " toki-edit-key)
     :keymaps 'override)
 
+  (general-create-definer toki-elisp-def
+    :prefix (concat toki-leader-key " " toki-elisp-key)
+    :keymaps 'override)
+
   (general-create-definer toki-file-def
     :prefix (concat toki-leader-key " " toki-file-key)
     :keymaps 'override)
@@ -499,6 +506,7 @@ This is for site-lisps that requires external packages."
     toki-buffer-key '(:wk "Buffer")
     toki-code-key '(:wk "Code")
     toki-edit-key '(:wk "Edit/Emacs")
+    toki-elisp-key '(:wk "Elisp")
     toki-file-key '(:wk "File")
     toki-help-key '(:wk "Help")
     toki-local-key '(:wk "Local")
