@@ -70,36 +70,30 @@ After you set this, call `toki-term-setup-escape-keys'.")
 When DIR is nil, set it to the project root, or current directory
 if project can't be detected.
 
-This is like `term' but with several tweaks to make you happier."
+When there's already a terminal with DIR being the working
+directory, and there's no program running in it, switch to that
+terminal.  If you do want a new terminal, call `toki-term' again
+after that.
+
+This is like `term' but with several tweaks to make you happier,
+see the package `toki-term'."
   (interactive)
   (let* ((prog (or toki-term-shell-program explicit-shell-file-name
                    (getenv "SHELL") shell-file-name
                    (read-file-name "Shell executable: " "/" nil t)))
          (dir (or dir (funcall toki-term-project-root-function) default-directory))
          (default-dir (file-truename default-directory))
-         buflist target)
+         target)
     (setq dir (file-truename dir))
     (unless (derived-mode-p 'term-mode)
-      (dolist (buf (buffer-list))
+      (cl-dolist (buf (buffer-list))
         (with-current-buffer buf
           (when (and (derived-mode-p 'term-mode)
                      (equal default-dir dir)
                      ;; Make sure the term isn't running any program.
                      (not (process-running-child-p (get-buffer-process buf))))
-            (push buf buflist)))))
-    (cond
-     ((eq (length buflist) 1)
-      (when (y-or-n-p (format "%s is visiting %s.  Use it instead? "
-                              (buffer-name (car buflist)) dir))
-        (setq target (car buflist))))
-     ((> (length buflist) 1)
-      (when (y-or-n-p (format "Some terminals is visiting %s.  Pick one of them? "
-                              dir))
-        (setq target
-              (read-buffer "Term buffer: " nil t
-                           (lambda (buf)
-                             (memq (if (consp buf) (cdr buf) (get-buffer buf))
-                                   buflist)))))))
+            (setq target buf)
+            (cl-return)))))
     (unless target
       (setq target (generate-new-buffer "*term*"))
       (with-current-buffer target
