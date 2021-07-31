@@ -16,8 +16,9 @@
   (toki/setq
    evil-disable-insert-state-bindings t
    evil-default-state 'normal
+   evil-default-cursor #'toki/evil-default-cursor
    evil-insert-state-cursor '(bar . 3)
-   evil-emacs-state-cursor '((bar . 3) toki/evil-emacs-cursor)
+   evil-emacs-state-cursor `((bar . 3) ,(face-foreground 'warning))
    evil-normal-state-cursor '(box)
    evil-visual-state-cursor '(hbar)
    evil-motion-state-cursor '(hollow)
@@ -32,9 +33,11 @@
     "C-d" 'toki-smooth-scroll-window-half-page-up
     "C-u" 'toki-smooth-scroll-window-half-page-down))
 
-(defun toki/evil-emacs-cursor ()
-  "Set cursor color for emacs state."
-  (set-cursor-color (face-foreground 'warning)))
+(defun toki/evil-default-cursor ()
+  "Set cursor color for non-emacs states."
+  (if (eq (frame-parameter nil 'background-mode) 'dark)
+      (set-cursor-color "#f1f1f1")
+    (set-cursor-color "#252525")))
 
 (use-package evil-terminal-cursor-changer
   :if (not toki-gui-p)
