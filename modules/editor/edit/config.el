@@ -21,6 +21,9 @@
 
 ;; Undo Fu is a wrapper for Emacs built-in undo system, offering undo and redo
 ;; commands that we would expect in a normal editor or word-processor.
+
+;; AFAIK, undo-fu wraps emacs built-in `undo-only' and `undo-redo' (in Emacs
+;; 28) commands.  So we shouldn't need it after we have Emacs 28.
 (use-package undo-fu
   :defer t
   :config
@@ -289,6 +292,8 @@ See the docstring of `replace-string' for details."
 
 ;;; Structural editing
 
+;; TODO: more ideas on structural editing; evil-matchit, embrace
+
 ;; toki-editing offers fine and structural editing commands
 (use-package toki-editing
   :straight nil
@@ -349,7 +354,13 @@ See the docstring of `replace-string' for details."
 
   (show-paren-mode))
 
-;;; Misc
+;;; Misc packages
+
+(use-package avy
+  :defer t
+  :config
+  (toki/setq
+   avy-all-windows nil))
 
 (use-package editorconfig
   :trigger find-file-noselect
@@ -421,6 +432,8 @@ See the docstring of `replace-string' for details."
   :config
   (delete-selection-mode))
 
+;;; Misc commands
+
 (defun toki-set-tab-width-to-8 ()
   "Set the tab width of current buffer to 8.
 Many codes indent using 8-char-wide tabs, but don't specify it
@@ -428,6 +441,17 @@ using file local variables.  This command is for working with
 these codes."
   (interactive)
   (setq tab-width 8))
+
+(defun toki-quit-emacs ()
+  "Confirm and quit Emacs."
+  (interactive)
+  (when (y-or-n-p "Really quit Emacs?")
+    (save-buffers-kill-terminal)))
+
+(defun toki-reload-init-file ()
+  "Reload init file."
+  (interactive)
+  (load-file user-init-file))
 
 ;;; Keybinds
 
@@ -491,7 +515,14 @@ these codes."
   ;; Mark
   "M-m" 'set-mark-command
   ;; Search
-  "C-/" 'isearch-forward-regexp)
+  "C-/" 'isearch-forward-regexp
+  ;; Avy
+  "C-'" 'avy-goto-char-2
+  "C-\"" 'avy-goto-line)
+
+(toki-leader-def
+  "i" '(universal-argument :wk "Universal Arg")
+  "C-h" '(help-command :wk "C-h"))
 
 (toki-search-def
   "s" '(isearch-forward-regexp :wk "Search Regexp")
@@ -500,9 +531,40 @@ these codes."
   "R" '(toki-replace-string-strictly :wk "Replace String (Strictly)"))
 
 (toki-edit-def
- "u" '(undo-propose :wk "Browse Undo History")
- "n" '(narrow-to-region :wk "Narrow")
- "w" '(widen :wk "Widen")
- "8" '(toki-set-tab-width-to-8 :wk "8-char Tab for Buffer")
- "T" '(toki-tabify :wk "Tabify")
- "t" '(toki-untabify :wk "Untabify"))
+  "u" '(undo-propose :wk "Browse Undo History")
+  "n" '(narrow-to-region :wk "Narrow")
+  "w" '(widen :wk "Widen")
+  "8" '(toki-set-tab-width-to-8 :wk "8-char Tab for Buffer")
+  "T" '(toki-tabify :wk "Tabify")
+  "t" '(toki-untabify :wk "Untabify")
+  "i" '(insert-char :wk "Insert Char")
+  "v" '(consult-yank-from-kill-ring :wk "Clipboard")
+  "c" '(capitalize-dwim :wk "Capitalize")
+  "U" '(upcase-dwim :wk "Upcase")
+  "d" '(downcase-dwim :wk "Downcase")
+  "C" '(:ignore t :wk "Coding System")
+  "Cd" '(describe-current-coding-system :wk "Describe Current")
+  "Cr" '(revert-buffer-with-coding-system :wk "Reopen With")
+  "Cc" '(set-buffer-file-coding-system :wk "Convert To")
+  "q" '(toki-quit-emacs :wk "Quit Emacs")
+  "r" '(toki-reload-init-file :wk "Reload Config"))
+
+(toki-help-def
+  "t" '(which-key-show-top-level :wk "Top Level Keybinds")
+  "k" '(describe-key :wk "Key")
+  "p" '(describe-package :wk "Package")
+  "c" '(describe-char :wk "Char at Point")
+  "f" '(describe-function :wk "Function")
+  "F" '(describe-face :wk "Face")
+  "v" '(describe-variable :wk "Variable"))
+
+(toki-navigate-def
+  "i" '(imenu :wk "Imenu")
+  "l" '(goto-line :wk "Goto Line")
+  "B" '(beginning-of-buffer :wk "Beginning of Buffer")
+  "E" '(end-of-buffer :wk "End of Buffer")
+  "'" '(avy-goto-char-2 :wk "Avy: 2 Chars")
+  "\"" '(avy-goto-line :wk "Avy: Line"))
+
+(toki-mark-def
+  "b" '(mark-whole-buffer :wk "Buffer"))
