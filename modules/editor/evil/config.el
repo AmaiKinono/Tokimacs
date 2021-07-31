@@ -27,7 +27,8 @@
   (evil-set-initial-state 'prog-mode 'normal)
   (evil-set-initial-state 'conf-mode 'normal)
   (evil-make-overriding-map general-override-mode-map)
-  (general-def 'normal
+  (general-def
+    :states 'motion
     "C-d" 'toki-smooth-scroll-window-half-page-up
     "C-u" 'toki-smooth-scroll-window-half-page-down))
 
@@ -40,6 +41,40 @@
   :trigger after-init-hook
   :config
   (evil-terminal-cursor-changer-activate))
+
+;;; Commands
+
+(defun toki-insert-state ()
+  "Switch to insert state.  If in visual state, keep the region."
+  (interactive)
+  (if (not (evil-visual-state-p))
+      (evil-insert-state)
+    (evil-insert-state)
+    (activate-mark)))
+
+(defun toki-emacs-state ()
+  "Switch to emacs state.  If in visual state, keep the region."
+  (interactive)
+  (if (not (evil-visual-state-p))
+      (evil-emacs-state)
+    (evil-emacs-state)
+    (activate-mark)))
+
+(defun toki-visual-state ()
+  "Switch to visual state.  If region is activate, keep it."
+  (interactive)
+  (if (not (region-active-p))
+      (evil-visual-state)
+    (let ((beg (region-beginning))
+          (end (region-end)))
+      (cond ((eq (point) beg)
+             (evil-visual-state)
+             (set-mark (1- end))
+             (activate-mark))
+            (t
+             (evil-visual-state)
+             (goto-char (1- end))
+             (activate-mark))))))
 
 ;;; Keybinds
 
@@ -75,3 +110,8 @@
 
 (general-def 'normal
   "``" 'evil-visual-block)
+
+(toki-edit-def
+  "v" '(toki-visual-state :wk "Visual State")
+  "e" '(toki-emacs-state :wk "Emacs State")
+  "i" '(toki-insert-state :wk "Insert State"))
