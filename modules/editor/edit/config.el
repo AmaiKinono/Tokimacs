@@ -554,7 +554,7 @@ these codes."
 (toki-navigate-def
   "i" '(imenu :wk "Imenu")
   "l" '(goto-line :wk "Goto Line")
-  "B" '(beginning-of-buffer :wk "Beginning of Buffer")
+  "B" '(minibuffer-beginning-of-buffer :wk "Beginning of Buffer")
   "E" '(end-of-buffer :wk "End of Buffer")
   "'" '(avy-goto-char-2 :wk "Avy: 2 Chars")
   "\"" '(avy-goto-line :wk "Avy: Line"))
