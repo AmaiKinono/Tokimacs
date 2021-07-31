@@ -21,6 +21,8 @@
     "editor/file"      ;; File management
     "editor/edit"      ;; Fine & structural editing
     "editor/evil"      ;; Vim emulator
+    "prog/ide"         ;; IDE
+    "prog/lang"        ;; Language supports
     "app/term"         ;; Terminal emulator
     ))
 

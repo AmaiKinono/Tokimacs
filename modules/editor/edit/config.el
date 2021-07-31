@@ -567,4 +567,5 @@ these codes."
   "\"" '(avy-goto-line :wk "Avy: Line"))
 
 (toki-mark-def
-  "b" '(mark-whole-buffer :wk "Buffer"))
+  "b" '(mark-whole-buffer :wk "Buffer")
+  "h" '(diff-hl-mark-hunk :wk "Hunk"))
