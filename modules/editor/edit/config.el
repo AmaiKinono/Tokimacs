@@ -101,6 +101,19 @@
 
   (isearch-mb-mode))
 
+;; Ref: https://stackoverflow.com/questions/285660/automatically-wrapping-i-search/36707038#36707038
+
+(define-advice isearch-search (:around (fn) auto-wrap)
+  "Auto-wrap for isearch commands."
+  (funcall fn)
+  (unless isearch-success
+    ;; `isearch-repeat' calls `isearch-search'.  We need to use the unadvised
+    ;; version, or when the wrapped search also fails, it will call
+    ;; `isearch-repeat' in turn and reach max callstack depth.
+    (cl-letf (((symbol-function 'isearch-search)
+               (ad-get-orig-definition #'isearch-search)))
+      (isearch-repeat (if isearch-forward 'forward 'backward)))))
+
 (with-eval-after-load 'isearch-mb
   (defun toki-search-insert-.* ()
     "Insert \".*\"."
