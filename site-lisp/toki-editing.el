@@ -390,6 +390,14 @@ throw an error."
           (progn (delete-region beg end) t)
         (toki/unbalance-error "Can't delete region")))))
 
+(defun toki/kill-region (beg end &optional msg)
+  "Delete the region between BEG and END.
+When deleting it causes unbalanced state, don't delete it.  In
+this situation, if MSG is non-nil, throw an error using MSG."
+  (if (toki/region-balance-p beg end)
+      (progn (kill-region beg end) t)
+    (when msg (toki/unbalance-error msg))))
+
 (defun toki/delete-region (beg end &optional msg)
   "Delete the region between BEG and END.
 When deleting it causes unbalanced state, don't delete it.  In
@@ -398,21 +406,26 @@ this situation, if MSG is non-nil, throw an error using MSG."
       (progn (delete-region beg end) t)
     (when msg (toki/unbalance-error msg))))
 
-(defun toki/delete-by-move (func &optional msg delete-sexp)
+(defun toki/delete-by-move (func &optional msg delete-sexp kill)
   "Delete between point and the position after calling FUNC.
 If deleting will cause unbalanced state, then:
 
 - If MSG is non-nil, throw an error using MSG.
 - If MSG is nil, DELETE-SEXP is non-nil, delete (at least one)
   sexps until the position after calling FUNC.
-- If both MSG and DELETE-SEXP is nil, do nothing and return nil."
+- If both MSG and DELETE-SEXP is nil, do nothing and return nil.
+
+If KILL is non-nil, save the deleted text to kill ring."
   (or (toki/maybe-delete-active-region)
       (let ((pt (point))
-            (target (save-excursion (funcall func) (point))))
+            (target (save-excursion (funcall func) (point)))
+            (soft-delete (if kill #'toki/kill-region #'toki/delete-region))
+            (hard-delete (if kill #'kill-region #' delete-region)))
         (unless (eq pt target)
-          (or (toki/delete-region (min pt target) (max pt target) msg)
+          (or (funcall soft-delete (min pt target) (max pt target) msg)
               (if delete-sexp
-                  (delete-region
+                  (funcall
+                   hard-delete
                    pt
                    (if (< target pt)
                        (save-excursion (while (and (> (point) target)
@@ -420,7 +433,7 @@ If deleting will cause unbalanced state, then:
                                        (point))
                      (save-excursion (while (and (< (point) target)
                                                  (toki/forward-sexp)))
-                                      (point))))
+                                     (point))))
                 (funcall func)))))))
 
 ;;;;; Errors
@@ -510,20 +523,20 @@ does."
 ;;;;;; Line
 
 ;;;###autoload
-(defun toki-delete-line ()
-  "Delete a line forward while keeping expressions balanced."
+(defun toki-kill-line ()
+  "Kill a line forward while keeping expressions balanced."
   (interactive)
   (toki/delete-by-move (lambda ()
                          (if (eolp) (forward-line) (end-of-line)))
-                       nil 'delete-sexp))
+                       nil 'delete-sexp 'kill))
 
 ;;;###autoload
-(defun toki-backward-delete-line ()
-  "Delete a line backward while keeping expressions balanced."
+(defun toki-backward-kill-line ()
+  "Kill a line backward while keeping expressions balanced."
   (interactive)
   (toki/delete-by-move (lambda ()
                          (if (bolp) (forward-line -1) (beginning-of-line)))
-                       nil 'delete-sexp))
+                       nil 'delete-sexp 'kill))
 
 ;;;###autoload
 (defun toki-beginning-of-line ()
@@ -745,8 +758,8 @@ with the line before/after it."
     (define-key map (kbd "C-d") 'toki-forward-delete-char)
     (define-key map (kbd "M-d") 'toki-forward-delete-word)
     (define-key map (kbd "M-DEL") 'toki-backward-delete-word)
-    (define-key map (kbd "C-k") 'toki-delete-line)
-    (define-key map (kbd "C-u") 'toki-backward-delete-line)
+    (define-key map (kbd "C-k") 'toki-kill-line)
+    (define-key map (kbd "C-u") 'toki-backward-kill-line)
     (define-key map (kbd "C-h") 'toki-force-delete)
     map)
   "Keymap used for `toki-structural-editing-mode'.")
