@@ -103,7 +103,7 @@ more than 2, it will ask for the number of the window."
 
 (use-package awesome-tab
   :straight (:host github :repo "manateelazycat/awesome-tab")
-  :hook (after-init . awesome-tab-mode)
+  :hook (emacs-startup . awesome-tab-mode)
   :config
   (toki/setq
    awesome-tab-dark-unselected-blend 0.6
