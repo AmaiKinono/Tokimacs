@@ -344,10 +344,10 @@ This is for site-lisps that requires external packages."
   (defun use-package-handler/:trigger (name _keyword hooks rest state)
     (if (plist-get state :demand)
         (use-package-process-keywords name rest state)
-      `((dolist (hook ',hooks)
-          (toki/add-trigger hook
-            (require ',name)))
-        ,@(use-package-process-keywords name rest state))))
+      (let (l)
+        (dolist (hook hooks)
+          (push `(toki/add-trigger ',hook (require ',name)) l))
+        `(,@(nreverse l) ,@(use-package-process-keywords name rest state)))))
 
   (defalias 'use-package-normalize/:trigger 'use-package-normalize-symlist))
 
