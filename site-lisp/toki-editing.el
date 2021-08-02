@@ -207,22 +207,65 @@ Return the point if success."
 
 ;;;;; Movements: sexp
 
-(defun toki/internal-forward-sexp ()
-  "Move forward a sexp, return t if success, otherwise return nil.
-This is a wrapper of `forward-sexp'."
+(defun toki/primitive-forward-sexp (&optional n)
+  "A wrapper around `forward-sexp'.
+Move forward N sexp, return the point if success, otherwise
+return nil.
+
+This wrapper is here since `forward-sexp' can fail differently in
+different major modes, e.g., the built-in one for Lisp will throw
+a `scan-error', while the one from `web-mode' just does nothing
+and returns nil."
   (condition-case nil
-      (progn (forward-sexp) t)
+      (let ((beg (point))
+            (end (progn (forward-sexp n) (point))))
+        (unless (eq beg end) end))
     (scan-error nil)))
 
-(defun toki/internal-backward-sexp ()
-  "Move backward a sexp, return t if success, otherwise return nil.
-This is a wrapper of (forward-sexp -1)."
-  (condition-case nil
-      (progn (forward-sexp -1) t)
-    (scan-error nil)))
+(defun toki/strict-primitive-forward-sexp ()
+  "Move forward a sexp, return the point if success, otherwise return nil.
+If there's a balanced sexp in front, but jumping over it will
+move us to a different depth in the whole syntax tree, this won't
+go over it (unlike the built-in `forward-sexp').
 
-(defun toki/forward-sexp-in-construct (probe construct)
-  "Move forward a sexp in certain construct.
+Notice this doesn't work well in strings, as the built-in
+`forward-sexp' thinks the closing quote of this string, and the
+opening quote of the next one, forms a string.  It also doesn't
+work well for balanced comment blocks.  So we'll build on top of
+this function until we have `toki/strict-forward-sexp', which
+works on these situations."
+  (when-let* ((beg (point))
+              (end (save-excursion (toki/primitive-forward-sexp)))
+              (beg-of-maybe-bigger-sexp
+               (save-excursion (goto-char end)
+                               (toki/primitive-forward-sexp -1))))
+    (when (or (>= beg-of-maybe-bigger-sexp beg)
+              (and (< beg-of-maybe-bigger-sexp beg)
+                   (save-excursion
+                     (goto-char beg)
+                     (toki/primitive-forward-sexp -1)
+                     (eq (point) beg-of-maybe-bigger-sexp))))
+      (goto-char end))))
+
+(defun toki/strict-primitive-backward-sexp ()
+  "Move backward a sexp, return the point if success, otherwise return nil.
+It's the backward version of
+`toki/strict-primitive-forward-sexp'."
+  (when-let* ((end (point))
+              (beg (save-excursion (toki/primitive-forward-sexp -1)))
+              (end-of-maybe-bigger-sexp
+               (save-excursion (goto-char beg)
+                               (toki/primitive-forward-sexp))))
+    (when (or (<= end-of-maybe-bigger-sexp end)
+              (and (> end-of-maybe-bigger-sexp end)
+                   (save-excursion
+                     (goto-char end)
+                     (toki/primitive-forward-sexp)
+                     (eq (point) end-of-maybe-bigger-sexp))))
+      (goto-char beg))))
+
+(defun toki/strict-primitive-forward-sexp-in-construct (probe construct)
+  "Move strict forward a sexp in certain construct.
 PROBE is a function that should return non-nil when the point is
 in the construct, and nil when it's not.
 
@@ -233,8 +276,7 @@ When the point is not in the construct in the first place, throw
 and error \"Not in a CONSTRUCT\"."
   (when (not (funcall probe))
     (error (format "Not in a %s" construct)))
-  (let ((end (and (save-excursion (toki/internal-forward-sexp))
-                  (point)))
+  (let ((end (save-excursion (toki/strict-primitive-forward-sexp)))
         pos)
     (when end
       (save-excursion
@@ -245,8 +287,8 @@ and error \"Not in a CONSTRUCT\"."
       (when (and pos (>= pos end))
         (goto-char pos)))))
 
-(defun toki/backward-sexp-in-construct (probe construct)
-  "Move backward a sexp in certain construct.
+(defun toki/strict-primitive-backward-sexp-in-construct (probe construct)
+  "Move strict backward a sexp in certain construct.
 PROBE is a function that should return non-nil when the point is
 in the construct, and nil when it's not.
 
@@ -257,8 +299,7 @@ When the point is not in the construct in the first place, throw
 and error \"Not in a CONSTRUCT\"."
   (when (not (funcall probe))
     (error (format "Not in a %s" construct)))
-  (let ((beg (and (save-excursion (toki/internal-backward-sexp))
-                  (point)))
+  (let ((beg (save-excursion (toki/strict-primitive-backward-sexp)))
         pos)
     (when beg
       (save-excursion
@@ -269,28 +310,28 @@ and error \"Not in a CONSTRUCT\"."
       (when (and pos (<= pos beg))
         (goto-char pos)))))
 
-(defun toki/forward-sexp-in-string ()
-  "Move forward a sexp in when point is in string.
+(defun toki/strict-forward-sexp-in-string ()
+  "Move strict forward a sexp in when point is in string.
 The default `(forward-sexp)' thinks the end quote of a string and
 a beginning quote of the next string wraps a sexp.  This fixed
 that.
 
 Return the point after move.  When we can't move forward (i.e.,
 hit the ending quote), return nil."
-  (toki/forward-sexp-in-construct #'toki/in-string-p "string"))
+  (toki/strict-primitive-forward-sexp-in-construct #'toki/in-string-p "string"))
 
-(defun toki/backward-sexp-in-string ()
-  "Move backward a sexp in when point is in string.
+(defun toki/strict-backward-sexp-in-string ()
+  "Move strict backward a sexp in when point is in string.
 The default `(backward-sexp)' thinks the end quote of the
 previous string and a beginning quote of this string wraps a
 sexp.  This fixed that.
 
 Return the point after move.  When we can't move backward (i.e.,
 hit the beginning quote), return nil."
-  (toki/backward-sexp-in-construct #'toki/in-string-p "string"))
+  (toki/strict-primitive-backward-sexp-in-construct #'toki/in-string-p "string"))
 
-(defun toki/forward-sexp-in-comment ()
-  "Move forward a sexp in when point is in a comment.
+(defun toki/strict-forward-sexp-in-comment ()
+  "Move strict forward a sexp in when point is in a comment.
 The default `(forward-sexp)' goes over the end quote of the
 comment block.  This fixed that.
 
@@ -299,10 +340,10 @@ hit the ending quote), return nil.
 
 Notice that a point inside the (multichar) quote is not
 considered as in the comment."
-  (toki/forward-sexp-in-construct #'toki/in-comment-p "comment"))
+  (toki/strict-primitive-forward-sexp-in-construct #'toki/in-comment-p "comment"))
 
-(defun toki/backward-sexp-in-comment ()
-  "Move backward a sexp in when point is in a comment.
+(defun toki/strict-backward-sexp-in-comment ()
+  "Move strict backward a sexp in when point is in a comment.
 The default `(backward-sexp)' goes over the beginning quote of
 the comment block.  This fixes that.
 
@@ -311,130 +352,193 @@ hit the beginning quote), return nil.
 
 Notice that a point inside the (multichar) quote is not
 considered as in the comment."
-  (toki/backward-sexp-in-construct #'toki/in-comment-p "comment"))
+  (toki/strict-primitive-backward-sexp-in-construct #'toki/in-comment-p "comment"))
 
-(defun toki/forward-sexp ()
-  "Jump forward a sexp, including a whole comment block.
-Return t if success."
+(defun toki/strict-forward-sexp ()
+  "Move strict forward a sexp, including a whole comment block.
+Return the point if success, otherwise return nil."
   (toki/forward-blanks)
-  (and (or (toki/forward-comment-block)
-           (cond
-            ;; `toki/in-comment-p' doesn't consert a point inside the
-            ;; (multichar) comment quote as in the comment, but this is fine as
-            ;; when a user is deleting things with the point at there, they
-            ;; probably want to break the balanced comment quotes.
-            ((toki/in-comment-p) (toki/forward-sexp-in-comment))
-            ((toki/in-string-p) (toki/forward-sexp-in-string))
-            (t (toki/internal-forward-sexp))))
-       t))
+  (or (toki/forward-comment-block)
+      (cond
+       ;; `toki/in-comment-p' doesn't consert a point inside the
+       ;; (multichar) comment quote as in the comment, but this is fine as
+       ;; when a user is deleting things with the point at there, they
+       ;; probably want to break the balanced comment quotes.
+       ((toki/in-comment-p) (toki/strict-forward-sexp-in-comment))
+       ((toki/in-string-p) (toki/strict-forward-sexp-in-string))
+       (t (toki/strict-primitive-forward-sexp)))))
 
-(defun toki/backward-sexp ()
+(defun toki/strict-backward-sexp ()
   "Jump backward a sexp or balanced comment block.
-Return t if success."
+Return the point if success, otherwise return nil"
   (toki/backward-blanks)
-  (and (or (toki/backward-comment-block)
-           (cond
-            ;; `toki/in-comment-p' doesn't consert a point inside the
-            ;; (multichar) comment quote as in the comment, but this is fine
-            ;; as when a user is deleting things with the point at there,
-            ;; they probably want to break the balanced comment quotes.
-            ((toki/in-comment-p) (toki/backward-sexp-in-comment))
-            ((toki/in-string-p) (toki/backward-sexp-in-string))
-            (t (toki/internal-backward-sexp))))
-       t))
+  (or (toki/backward-comment-block)
+      (cond
+       ;; `toki/in-comment-p' doesn't consert a point inside the
+       ;; (multichar) comment quote as in the comment, but this is fine
+       ;; as when a user is deleting things with the point at there,
+       ;; they probably want to break the balanced comment quotes.
+       ((toki/in-comment-p) (toki/strict-backward-sexp-in-comment))
+       ((toki/in-string-p) (toki/strict-backward-sexp-in-string))
+       (t (toki/strict-primitive-backward-sexp)))))
 
 ;;;;; Movements: symbol + blank
 
 (defun toki/forward-symbol-and-blank (&optional bound)
   "Go forward symbols and blanks.
-Return t if success.  If BOUND is non-nil, don't go further than
-BOUND."
+Return the point if success.  If BOUND is non-nil, don't go
+further than BOUND."
   (when (looking-at (rx (+ (or (syntax symbol) (syntax word)
                                space "\n"))))
     (goto-char (match-end 0))
-    (when (and bound (> (point) bound))
-      (goto-char bound))
-    t))
+    (if (and bound (> (point) bound))
+        (goto-char bound)
+      (point))))
+
+(defun toki/backward-symbol-and-blank (&optional bound)
+  "Go forward symbols and blanks.
+Return the point if success.  If BOUND is non-nil, don't go further than
+BOUND."
+  (when (looking-back (rx (+ (or (syntax symbol) (syntax word)
+                               space "\n"))) nil 'greedy)
+    (goto-char (match-beginning 0))
+    (if (and bound (< (point) bound))
+        (goto-char bound)
+      (point))))
 
 ;;;;; Balance test
 
-(defun toki/region-balance-p (beg end)
-  "Return non-nil when the region from BEG to END is balanced.
-This is tolerant to unbalanced word delimeters like \"if..end
-if\", \"begin..end\", \"def\", as it's common to delete part of
-such a block and then rewrite it."
-  (save-excursion
-    (goto-char beg)
-    (cl-block nil
-      (when (eq beg end) (cl-return t))
+(defun toki/region-balance-p (beg end &optional strict)
+  "Return t when the region from BEG to END is balanced.
+When STRICT is nil, this is tolerant to unbalanced word
+delimeters like \"if..end if\", \"begin..end\", \"def\", as it's
+common to delete part of such a block and then rewrite it.  When
+STRICT is non-nil, scan the expressions strictly and don't treat
+word delimiters differently."
+  (cl-block nil
+    (when (eq beg end)
+      (cl-return t))
+    (save-excursion
+      (goto-char beg)
       (while (< (point) end)
-        (if (or (toki/forward-symbol-and-blank end)
-                (toki/forward-sexp))
-            (when (or (eq (point) end)
-                      (and (< (point) end)
-                           (progn (toki/forward-blanks end)
-                                  (>= (point) end))))
+        (if (or (unless strict (toki/forward-symbol-and-blank end))
+                (toki/forward-blanks end)
+                (toki/strict-forward-sexp))
+            (when (eq (point) end)
               (cl-return t))
+          (cl-return nil)))
+      ;; Now we have (> (point) end).  This means END is in a sexp.  If END is
+      ;; in an atom, we can still delete the part of this atom before END,
+      ;; resulting a balanced state, so we check if this is true.  Notice the
+      ;; (= (point) end) situation causes return in the above code, so we don't
+      ;; need to handle it.
+      (let ((goal (point)))
+        (goto-char end)
+        (if (and (toki/strict-forward-sexp)
+                 (eq (point) goal))
+            (cl-return t)
           (cl-return nil))))))
 
 ;;;;; Deletion
 
-(defun toki/maybe-delete-active-region ()
+(defun toki/maybe-delete-active-region (&optional strict)
   "When there's an active region, delete it.
 If deleting it will cause unbalanced state, don't delete it, and
-throw an error."
+throw an error.
+
+This is tolerant to deleting word delimiters, unless STRICT is
+non-nil, see the explanation in `toki/region-balance-p'."
   (when (use-region-p)
     (let ((beg (region-beginning))
           (end (region-end)))
-      (if (toki/region-balance-p beg end)
+      (if (toki/region-balance-p beg end strict)
           (progn (delete-region beg end) t)
         (toki/unbalance-error "Can't delete region")))))
 
-(defun toki/kill-region (beg end &optional msg)
+(defun toki/kill-region (beg end &optional msg strict)
   "Delete the region between BEG and END.
-When deleting it causes unbalanced state, don't delete it.  In
-this situation, if MSG is non-nil, throw an error using MSG."
-  (if (toki/region-balance-p beg end)
+Return t if success.  When deleting it causes unbalanced state,
+don't delete it.  In this situation, if MSG is non-nil, throw an
+error using MSG, otherwise return nil.
+
+This is tolerant to killing word delimiters, unless STRICT is
+non-nil, see the explanation in `toki/region-balance-p'."
+  (if (toki/region-balance-p beg end strict)
       (progn (kill-region beg end) t)
     (when msg (toki/unbalance-error msg))))
 
-(defun toki/delete-region (beg end &optional msg)
+(defun toki/delete-region (beg end &optional msg strict)
   "Delete the region between BEG and END.
-When deleting it causes unbalanced state, don't delete it.  In
-this situation, if MSG is non-nil, throw an error using MSG."
-  (if (toki/region-balance-p beg end)
+Return t if success.  When deleting it causes unbalanced state,
+don't delete it.  In this situation, if MSG is non-nil, throw an
+error using MSG.
+
+This is tolerant to deleting word delimiters, unless STRICT is
+non-nil, see the explanation in `toki/region-balance-p'."
+  (if (toki/region-balance-p beg end strict)
       (progn (delete-region beg end) t)
     (when msg (toki/unbalance-error msg))))
 
-(defun toki/delete-by-move (func &optional msg delete-sexp kill)
+;;;;; Core API
+
+(defun toki/delete-by-move (func &optional msg delete-sexp kill strict)
   "Delete between point and the position after calling FUNC.
-If deleting will cause unbalanced state, then:
+First, if there's an active region, try to delete the region
+using `toki/maybe-delete-active-region' (with STRICT being nil)
+instead.  If there's no active region, the logic is explained
+below:
 
-- If MSG is non-nil, throw an error using MSG.
-- If MSG is nil, DELETE-SEXP is non-nil, delete (at least one)
-  sexps until the position after calling FUNC.
-- If both MSG and DELETE-SEXP is nil, do nothing and return nil.
+- If DELETE-SEXP is non-nil, delete (at least one)
+  sexps (including empty lines) until the position after calling
+  FUNC.
+- If DELETE-SEXP is non-nil, try to delete between point and the
+  position after calling FUNC.  If this will cause unbalanced
+  state, then throw an error using MSG, or return nil if MSG is
+  nil.
 
-If KILL is non-nil, save the deleted text to kill ring."
+Return non-nil if deleted successfully.
+
+If KILL is non-nil, save the deleted text to kill ring.'
+
+This is tolerant to deleting word delimiters, unless STRICT is
+non-nil, see the explanation in `toki/region-balance-p'."
   (or (toki/maybe-delete-active-region)
       (let ((pt (point))
-            (target (save-excursion (funcall func) (point)))
+            (goal (save-excursion (funcall func) (point)))
             (soft-delete (if kill #'toki/kill-region #'toki/delete-region))
             (hard-delete (if kill #'kill-region #' delete-region)))
-        (unless (eq pt target)
-          (or (funcall soft-delete (min pt target) (max pt target) msg)
-              (if delete-sexp
-                  (funcall
-                   hard-delete
-                   pt
-                   (if (< target pt)
-                       (save-excursion (while (and (> (point) target)
-                                                   (toki/backward-sexp)))
-                                       (point))
-                     (save-excursion (while (and (< (point) target)
-                                                 (toki/forward-sexp)))
-                                     (point))))
-                (funcall func)))))))
+        (unless (eq pt goal)
+          (if (< pt goal)
+              (cond
+               (delete-sexp
+                (let ((hard-delete-goal
+                       (save-excursion
+                         (goto-char pt)
+                         (while (and (< (point) goal)
+                                     (or (unless strict (toki/forward-symbol-and-blank goal))
+                                         (toki/forward-blanks goal)
+                                         (toki/strict-forward-sexp))))
+                         (point))))
+                  (unless (eq pt hard-delete-goal)
+                    (funcall hard-delete pt hard-delete-goal)
+                    t)))
+               (t (or (funcall soft-delete pt goal msg strict)
+                      (goto-char goal))))
+            (cond
+             (delete-sexp
+              (let ((hard-delete-goal
+                     (save-excursion
+                       (goto-char pt)
+                       (while (and (> (point) goal)
+                                   (or (unless strict (toki/backward-symbol-and-blank goal))
+                                       (toki/backward-blanks)
+                                       (toki/strict-backward-sexp))))
+                       (point))))
+                (unless (eq pt hard-delete-goal)
+                  (funcall hard-delete hard-delete-goal pt)
+                  t)))
+             (t (or (funcall soft-delete goal pt msg strict)
+                    (goto-char goal)))))))))
 
 ;;;;; Errors
 
@@ -526,17 +630,21 @@ does."
 (defun toki-kill-line ()
   "Kill a line forward while keeping expressions balanced."
   (interactive)
-  (toki/delete-by-move (lambda ()
-                         (if (eolp) (forward-line) (end-of-line)))
-                       nil 'delete-sexp 'kill))
+  (and
+   (toki/delete-by-move (lambda ()
+                          (if (eolp) (forward-line) (end-of-line)))
+                        nil 'delete-sexp 'kill 'strict)
+   (indent-according-to-mode)))
 
 ;;;###autoload
 (defun toki-backward-kill-line ()
   "Kill a line backward while keeping expressions balanced."
   (interactive)
-  (toki/delete-by-move (lambda ()
-                         (if (bolp) (forward-line -1) (beginning-of-line)))
-                       nil 'delete-sexp 'kill))
+  (and
+   (toki/delete-by-move (lambda ()
+                          (if (bolp) (forward-line -1) (beginning-of-line)))
+                        nil 'delete-sexp 'kill 'strict))
+  (indent-according-to-mode))
 
 ;;;###autoload
 (defun toki-beginning-of-line ()
