@@ -19,9 +19,10 @@
 (add-hook 'emacs-lisp-mode-hook
           #'toki/sentence-end-double-space-for-elisp)
 
-(use-package highlight-defined
-  :hook ((emacs-lisp-mode . highlight-defined-mode)
-         (ielm-mode . highlight-defined-mode)))
+(use-package elispfl
+  :straight (:host github :repo "cireu/elispfl")
+  :hook ((emacs-lisp-mode . elispfl-mode)
+         (ielm-mode . elispfl-ielm-mode)))
 
 ;;; Markdown
 
