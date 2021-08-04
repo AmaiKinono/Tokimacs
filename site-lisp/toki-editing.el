@@ -441,7 +441,7 @@ word delimiters differently."
 
 ;;;;; Deletion
 
-(defun toki/maybe-delete-active-region (&optional strict)
+(defun toki/maybe-soft-delete-active-region (&optional strict)
   "When there's an active region, delete it.
 If deleting it will cause unbalanced state, don't delete it, and
 throw an error.
@@ -455,8 +455,22 @@ non-nil, see the explanation in `toki/region-balance-p'."
           (progn (delete-region beg end) t)
         (toki/unbalance-error "Can't delete region")))))
 
-(defun toki/kill-region (beg end &optional msg strict)
+(defun toki/kill-region (beg end)
+  "Kill the region between BEG and END.
+Return t if success."
+  ;; `kill-region' signals an error if it fails.,
+  (kill-region beg end)
+  t)
+
+(defun toki/delete-region (beg end)
   "Delete the region between BEG and END.
+Return t if success."
+  ;; `delete-region' signals an error if it fails.
+  (delete-region beg end)
+  t)
+
+(defun toki/soft-kill-region (beg end &optional strict msg)
+  "Soft delete the region between BEG and END.
 Return t if success.  When deleting it causes unbalanced state,
 don't delete it.  In this situation, if MSG is non-nil, throw an
 error using MSG, otherwise return nil.
@@ -467,8 +481,8 @@ non-nil, see the explanation in `toki/region-balance-p'."
       (progn (kill-region beg end) t)
     (when msg (toki/unbalance-error msg))))
 
-(defun toki/delete-region (beg end &optional msg strict)
-  "Delete the region between BEG and END.
+(defun toki/soft-delete-region (beg end &optional strict msg)
+  "Soft delete the region between BEG and END.
 Return t if success.  When deleting it causes unbalanced state,
 don't delete it.  In this situation, if MSG is non-nil, throw an
 error using MSG.
@@ -479,66 +493,112 @@ non-nil, see the explanation in `toki/region-balance-p'."
       (progn (delete-region beg end) t)
     (when msg (toki/unbalance-error msg))))
 
+(defun toki/soft-delete-forward
+    (from to &optional strict-sexp delete-sexp kill fail-action msg)
+  "Soft delete forward from point FROM to TO.
+If STRICT-SEXP is nil, word delimiters like \"if..end if\",
+\"begin..end\" and \"def\" are considered as balanced
+expressions, and can be delete safely, as it's common to delete
+part of such a block and then rewrite it.  If STRICT-SEXP is
+non-nil, only consider syntactically balanced expressions as
+balanced.
+
+If DELETE-SEXP is non-nil, delete at least one sexps (can be
+empty lines) until no more to delete, or we've reached a position
+beyond TO.  Otherwise, check if the region between FROM and TO is
+balanced, and when it is, delete it.
+
+When KILL is non-nil, save the deleted part to the kill ring.
+
+When something is deleted, this returns non-nil; when nothing is
+deleted, we say the deletion fails.  This can only happen when
+DELETE-SEXP is nil, and the region between FROM and TO is
+unbalanced.  FAIL-ACTION specifies the action after failure.  It
+can be:
+
+- nil: If MSG is nil, do nothing and return nil, otherwise signal
+  an user error using MSG.
+- `jump': Jump to point TO, and return nil.
+- `jump-and-reverse-delete': Jump to point TO, and try soft
+  delete from TO to FROM.  This is done by
+  `toki/soft-delete-backward', with the same arguments, but
+  DELETE-SEXP being non-nil."
+  (let ((soft-delete (if kill #'toki/soft-kill-region #'toki/soft-delete-region))
+        (hard-delete (if kill #'toki/kill-region #'toki/delete-region))
+        (move-forward (lambda ()
+                        (or (unless strict-sexp
+                              (toki/forward-symbol-and-blank to))
+                            (toki/forward-blanks to)
+                            (toki/strict-forward-sexp)))))
+    (unless (eq from to)
+      (cond
+       (delete-sexp
+        (let ((hard-delete-goal
+               (save-excursion
+                 (goto-char from)
+                 (while (and (< (point) to)
+                             (funcall move-forward)))
+                 (point))))
+          (unless (eq from hard-delete-goal)
+            (funcall hard-delete from hard-delete-goal))))
+       (t (or (funcall soft-delete from to strict-sexp msg)
+              (pcase fail-action
+                ('nil (when msg (user-error msg)))
+                ('jump (goto-char to) nil)
+                ('jump-and-reverse-delete
+                 (goto-char to)
+                 (toki/soft-delete-backward
+                  to from strict-sexp t kill nil msg)))))))))
+
+(defun toki/soft-delete-backward
+    (from to &optional strict-sexp delete-sexp kill fail-action msg)
+  "Soft delete backward from point FROM to TO.
+This is similar to `toki/soft-delete-forward', see its
+docstring."
+  (let ((soft-delete (if kill #'toki/soft-kill-region #'toki/soft-delete-region))
+        (hard-delete (if kill #'toki/kill-region #'toki/delete-region))
+        (move-backward (lambda ()
+                         (or (unless strict-sexp
+                               (toki/backward-symbol-and-blank to))
+                             (toki/backward-blanks to)
+                             (toki/strict-backward-sexp)))))
+    (unless (eq from to)
+      (cond
+       (delete-sexp
+        (let ((hard-delete-goal
+               (save-excursion
+                 (goto-char from)
+                 (while (and (> (point) to)
+                             (funcall move-backward)))
+                 (point))))
+          (unless (eq from hard-delete-goal)
+            (funcall hard-delete hard-delete-goal from))))
+       (t (or (funcall soft-delete to from strict-sexp msg)
+              (pcase fail-action
+                ('nil (when msg (user-error msg)))
+                ('jump (goto-char to) nil)
+                ('jump-and-reverse-delete
+                 (goto-char to)
+                 (toki/soft-delete-forward
+                  to from strict-sexp t kill nil msg)))))))))
+
 ;;;;; Core API
 
-(defun toki/delete-by-move (func &optional msg delete-sexp kill strict)
+(defun toki/delete-by-move
+    (func &optional strict-sexp delete-sexp kill fail-action msg)
   "Delete between point and the position after calling FUNC.
 First, if there's an active region, try to delete the region
-using `toki/maybe-delete-active-region' (with STRICT being nil)
-instead.  If there's no active region, the logic is explained
-below:
-
-- If DELETE-SEXP is non-nil, delete (at least one)
-  sexps (including empty lines) until the position after calling
-  FUNC.
-- If DELETE-SEXP is non-nil, try to delete between point and the
-  position after calling FUNC.  If this will cause unbalanced
-  state, then throw an error using MSG, or return nil if MSG is
-  nil.
-
-Return non-nil if deleted successfully.
-
-If KILL is non-nil, save the deleted text to kill ring.'
-
-This is tolerant to deleting word delimiters, unless STRICT is
-non-nil, see the explanation in `toki/region-balance-p'."
-  (or (toki/maybe-delete-active-region)
-      (let ((pt (point))
-            (goal (save-excursion (funcall func) (point)))
-            (soft-delete (if kill #'toki/kill-region #'toki/delete-region))
-            (hard-delete (if kill #'kill-region #' delete-region)))
-        (unless (eq pt goal)
-          (if (< pt goal)
-              (cond
-               (delete-sexp
-                (let ((hard-delete-goal
-                       (save-excursion
-                         (goto-char pt)
-                         (while (and (< (point) goal)
-                                     (or (unless strict (toki/forward-symbol-and-blank goal))
-                                         (toki/forward-blanks goal)
-                                         (toki/strict-forward-sexp))))
-                         (point))))
-                  (unless (eq pt hard-delete-goal)
-                    (funcall hard-delete pt hard-delete-goal)
-                    t)))
-               (t (or (funcall soft-delete pt goal msg strict)
-                      (goto-char goal))))
-            (cond
-             (delete-sexp
-              (let ((hard-delete-goal
-                     (save-excursion
-                       (goto-char pt)
-                       (while (and (> (point) goal)
-                                   (or (unless strict (toki/backward-symbol-and-blank goal))
-                                       (toki/backward-blanks)
-                                       (toki/strict-backward-sexp))))
-                       (point))))
-                (unless (eq pt hard-delete-goal)
-                  (funcall hard-delete hard-delete-goal pt)
-                  t)))
-             (t (or (funcall soft-delete goal pt msg strict)
-                    (goto-char goal)))))))))
+using `toki/maybe-soft-delete-active-region' (with STRICT being
+nil) instead.  If there's no active region, use
+`toki/soft-delete-forward' or `toki/soft-delete-backward' to soft
+delete, see their docstrings."
+  (or (toki/maybe-soft-delete-active-region)
+      (let* ((pt (point))
+             (goal (save-excursion (funcall func) (point)))
+             (delete-func (cond ((> goal pt) #'toki/soft-delete-forward)
+                                ((< goal pt) #'toki/soft-delete-backward))))
+         (when delete-func
+          (apply delete-func pt goal strict-sexp delete-sexp kill fail-action msg)))))
 
 ;;;;; Errors
 
@@ -566,13 +626,13 @@ state."
 (defun toki-backward-delete-char ()
   "Delete char backward while keeping expressions balanced."
   (interactive)
-  (toki/delete-by-move #'backward-char))
+  (toki/delete-by-move #'backward-char nil nil nil 'jump-and-reverse-delete))
 
 ;;;###autoload
 (defun toki-forward-delete-char ()
   "Delete char forward while keeping expressions balanced."
   (interactive)
-  (toki/delete-by-move #'forward-char))
+  (toki/delete-by-move #'forward-char nil nil nil 'jump-and-reverse-delete))
 
 ;;;;; Word
 
@@ -598,7 +658,7 @@ does."
 (defun toki-forward-delete-word ()
   "Delete word forward while keeping expressions balanced."
   (interactive)
-  (toki/delete-by-move #'toki-forward-word nil 'delete-sexp))
+  (toki/delete-by-move #'toki-forward-word nil nil nil 'jump-and-reverse-delete))
 
 ;;;###autoload
 (defun toki-backward-word ()
@@ -622,7 +682,7 @@ does."
 (defun toki-backward-delete-word ()
   "Delete word backward while keeping expressions balanced."
   (interactive)
-  (toki/delete-by-move #'toki-backward-word nil 'delete-sexp))
+  (toki/delete-by-move #'toki-backward-word nil nil nil 'jump-and-reverse-delete))
 
 ;;;;;; Line
 
@@ -633,7 +693,7 @@ does."
   (and
    (toki/delete-by-move (lambda ()
                           (if (eolp) (forward-line) (end-of-line)))
-                        nil 'delete-sexp 'kill 'strict)
+                        'strict-sexp 'delete-sexp 'kill)
    (indent-according-to-mode)))
 
 ;;;###autoload
@@ -643,8 +703,8 @@ does."
   (and
    (toki/delete-by-move (lambda ()
                           (if (bolp) (forward-line -1) (beginning-of-line)))
-                        nil 'delete-sexp 'kill 'strict))
-  (indent-according-to-mode))
+                        'strict-sexp 'delete-sexp 'kill)
+   (indent-according-to-mode)))
 
 ;;;###autoload
 (defun toki-beginning-of-line ()
@@ -728,6 +788,49 @@ mark, colon, semicolon, or ellipsis."
       (condition-case nil
           (progn (up-list -1) t)
         (scan-error nil))))
+
+;;;###autoload
+(defun toki-forward-sexp ()
+  "Go forward a sexp.
+This is the same as `toki/strict-forward-sexp', except that it
+jumps forward consecutive single-line comments."
+  (interactive)
+  (toki/forward-blanks)
+  (if (toki/forward-comment-block)
+      (progn (while (and (toki/forward-blanks)
+                         (toki/forward-comment-block)))
+             (toki/backward-blanks))
+    (cond
+     ((toki/in-comment-p) (toki/strict-forward-sexp-in-comment))
+     ((toki/in-string-p) (toki/strict-forward-sexp-in-string))
+     (t (toki/strict-primitive-forward-sexp)))))
+
+(defun toki-backward-sexp ()
+  "Go backward a sexp.
+This is the same as `toki/strict-backward-sexp', except that it
+jumps forward consecutive single-line comments."
+  (interactive)
+  (toki/backward-blanks)
+  (if (toki/backward-comment-block)
+      (progn (while (and (toki/backward-blanks)
+                         (toki/backward-comment-block)))
+             (toki/forward-blanks))
+    (cond
+     ((toki/in-comment-p) (toki/strict-backward-sexp-in-comment))
+     ((toki/in-string-p) (toki/strict-backward-sexp-in-string))
+     (t (toki/strict-primitive-backward-sexp)))))
+
+(defun toki-beginning-of-sexp ()
+  "Go to the beginning of current sexp."
+  (interactive)
+  (push-mark)
+  (while (toki/strict-backward-sexp)))
+
+(defun toki-end-of-sexp ()
+  "Go to the beginning of current sexp."
+  (interactive)
+  (push-mark)
+  (while (toki/strict-forward-sexp)))
 
 ;;;;;; Scroll
 
@@ -869,6 +972,10 @@ with the line before/after it."
     (define-key map (kbd "C-k") 'toki-kill-line)
     (define-key map (kbd "C-u") 'toki-backward-kill-line)
     (define-key map (kbd "C-h") 'toki-force-delete)
+    (define-key map (kbd "C-M-f") 'toki-forward-sexp)
+    (define-key map (kbd "C-M-b") 'toki-backward-sexp)
+    (define-key map (kbd "C-M-a") 'toki-beginning-of-sexp)
+    (define-key map (kbd "C-M-e") 'toki-end-of-sexp)
     map)
   "Keymap used for `toki-structural-editing-mode'.")
 
