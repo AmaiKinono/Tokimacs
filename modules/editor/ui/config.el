@@ -174,6 +174,12 @@ This doesn't affect Emacs in terminal.")
 
 ;;; Theme
 
+;; The `fixed-pitch' face is used for places like code blocks in markup
+;; languages.  It uses "Monospace" family by default, which is reasonable, but
+;; may actually fall back to an unwanted font.  Since most people use a
+;; monospaced font as the default font, we let it use the default font.
+(set-face-attribute 'fixed-pitch nil :family 'unspecified)
+
 (use-package base16-theme
   :init
   (toki/setq
