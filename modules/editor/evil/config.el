@@ -2,6 +2,14 @@
 
 ;; Vim Emulator
 
+;;; User options
+
+(defvar toki-minimal-evil-keybinds
+  '("h" "j" "k" "l" ":" "G" "gg")
+  "Evil keybindings to enable in motion state in special modes.
+They are also enabled in some appropriate minor modes like
+`undo-propose-mode'.")
+
 ;;; Packages
 
 (use-package evil
@@ -15,7 +23,11 @@
   :config
   (toki/setq
    evil-disable-insert-state-bindings t
-   evil-default-state 'normal
+   ;; We want all modes, except a few (REPL, terminal, etc.), to start in
+   ;; normal state.
+   evil-emacs-state-modes nil
+   evil-insert-state-modes '(term-mode comint-mode)
+   evil-motion-state-modes nil
    evil-default-cursor #'toki/evil-default-cursor
    evil-insert-state-cursor '(bar . 3)
    evil-emacs-state-cursor `((bar . 3) ,(face-foreground 'warning))
@@ -23,15 +35,7 @@
    evil-visual-state-cursor '(hbar)
    evil-motion-state-cursor '(hollow)
    evil-replace-state-cursor '(hbar . 6))
-  (evil-set-initial-state 'fundamental-mode 'normal)
-  (evil-set-initial-state 'text-mode 'normal)
-  (evil-set-initial-state 'prog-mode 'normal)
-  (evil-set-initial-state 'conf-mode 'normal)
-  (evil-make-overriding-map general-override-mode-map)
-  (general-def
-    :states 'motion
-    "C-d" 'toki-smooth-scroll-window-half-page-up
-    "C-u" 'toki-smooth-scroll-window-half-page-down))
+  (evil-make-overriding-map general-override-mode-map))
 
 (defun toki/evil-default-cursor ()
   "Set cursor color for non-emacs states."
@@ -44,6 +48,33 @@
   :trigger after-init-hook
   :config
   (evil-terminal-cursor-changer-activate))
+
+(with-eval-after-load 'evil
+  (defun toki/add-special-mode-evil-keybinds-to-map (map)
+    "Enable `toki-minimal-evil-keybinds' for keymap MAP."
+    (let (keybinds)
+      (dolist (k toki-minimal-evil-keybinds)
+        (push k keybinds)
+        (push (lookup-key evil-motion-state-map k) keybinds))
+      (apply #'evil-define-key* 'motion map (nreverse keybinds))))
+
+  (defun toki/add-minimal-evil-keybinds-to-local-map ()
+    "Apply `toki-minimal-evil-keybinds' to buffer-local map.
+Before this, the buffer-local map is made to override than motion
+state keybinds.  Keys in `toki-minimal-evil-keybinds' are added
+back afterwards."
+    (let ((map (current-local-map)))
+      (toki/add-special-mode-evil-keybinds-to-map map)
+      ;; Ref: https://github.com/emacs-evil/evil/issues/511
+      (evil-make-overriding-map map 'motion)
+      (evil-normalize-keymaps)))
+
+  (add-hook 'special-mode-hook #'toki/add-minimal-evil-keybinds-to-local-map)
+
+  (with-eval-after-load 'undo-propose
+    (toki/add-special-mode-evil-keybinds-to-map undo-propose-mode-map)
+    (evil-make-overriding-map undo-propose-mode-map 'motion)
+    (add-hook 'undo-propose-mode-hook #'evil-normalize-keymaps)))
 
 ;;; Commands
 
