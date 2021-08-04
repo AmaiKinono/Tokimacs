@@ -477,12 +477,9 @@ these codes."
         which-key-replacement-alist))
 
 (general-def
-  :keymaps 'override
   ;; Undo/Redo
   "C-z" 'undo-fu-only-undo
-  "C-S-z" 'undo-fu-only-redo)
-
-(general-def
+  "C-S-z" 'undo-fu-only-redo
   ;; Word
   "M-f" 'toki-forward-word
   "M-b" 'toki-backward-word
@@ -510,8 +507,8 @@ these codes."
   ;; Search
   "C-/" 'isearch-forward-regexp
   ;; Avy
-  "C-'" 'avy-goto-char-2
-  "C-\"" 'avy-goto-line)
+  "C-'" 'avy-goto-line
+  "C-\"" 'avy-goto-char-2)
 
 (toki-leader-def
   "i" '(universal-argument :wk "Universal Arg")
@@ -556,8 +553,8 @@ these codes."
   "l" '(goto-line :wk "Goto Line")
   "B" '(minibuffer-beginning-of-buffer :wk "Beginning of Buffer")
   "E" '(end-of-buffer :wk "End of Buffer")
-  "'" '(avy-goto-char-2 :wk "Avy: 2 Chars")
-  "\"" '(avy-goto-line :wk "Avy: Line"))
+  "'" '(avy-goto-line :wk "Avy: Line")
+  "\"" '(avy-goto-char-2 :wk "Avy: 2 Chars"))
 
 (toki-mark-def
   "b" '(mark-whole-buffer :wk "Buffer")

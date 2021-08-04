@@ -119,7 +119,7 @@ back afterwards."
   "2nd leader key used in normal and visual state.")
 
 (general-def
-  :states '(normal visual)
+  :states 'motion
   :keymaps 'override
   :start-maps t
   ;; 1. `general-key' can't be used here, or all overrided descriptions will not
@@ -144,6 +144,17 @@ back afterwards."
 
 (general-def 'normal
   "``" 'evil-visual-block)
+
+(general-def
+  :states '(insert emacs)
+  "C-z" 'undo-fu-only-undo
+  "C-S-z" 'undo-fu-only-redo)
+
+(general-def
+  :states 'motion
+  ;; Smooth scroll
+  "C-d" 'toki-smooth-scroll-window-half-page-up
+  "C-u" 'toki-smooth-scroll-window-half-page-down)
 
 (toki-edit-def
   "v" '(toki-visual-state :wk "Visual State")

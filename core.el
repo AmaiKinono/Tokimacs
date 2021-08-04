@@ -378,6 +378,9 @@ This is for site-lisps that requires external packages."
 (defvar toki-2nd-leader-key "M-j"
   "Second Leader Key.")
 
+(defvar toki-local-leader-key "M-l"
+  "A key to simulate `<leader> l'.")
+
 (defvar toki-app-key "a"
   "For app commands.")
 
@@ -506,7 +509,7 @@ This is for site-lisps that requires external packages."
     toki-buffer-key '(:wk "Buffer")
     toki-code-key '(:wk "Code")
     toki-edit-key '(:wk "Edit/Emacs")
-    toki-elisp-key '(:wk "Elisp")
+    toki-elisp-key '(:wk "Elisp/Extra")
     toki-file-key '(:wk "File")
     toki-help-key '(:wk "Help")
     toki-local-key '(:wk "Local")
@@ -519,10 +522,13 @@ This is for site-lisps that requires external packages."
     toki-vc-key '(:wk "Version Control")
     toki-window-key '(:wk "Window")))
 
+(general-def
+  :keymaps 'override
+  toki-local-leader-key (general-key (concat toki-leader-key " " toki-local-key)))
+
 (toki-edit-def
   "u" '(toki-update-package :wk "Update Package")
   "U" '(toki-update-all :wk "Update All Packages"))
-
 (use-package which-key
   :hook (after-init . which-key-mode)
   :config

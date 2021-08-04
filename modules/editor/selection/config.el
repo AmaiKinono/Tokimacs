@@ -14,7 +14,9 @@
    vertico-count 8)
   (general-def
     :keymaps 'vertico-map
-    "C-c" 'vertico-save)
+    "C-c" 'vertico-save
+    "C-r" 'vertico-scroll-up
+    "C-t" 'vertico-scroll-down)
   (face-spec-set 'vertico-current
                  '((((background light))
                     :background "#d8d8d8" :extend t)
@@ -44,10 +46,7 @@
 (use-package marginalia
   :trigger pre-command-hook
   :config
-  (marginalia-mode)
-  (toki-local-def
-   :keymaps 'minibuffer-local-map
-   "c" `(,(toki/make-combo marginalia-cycle) :wk "Cycle Annotation")))
+  (marginalia-mode))
 
 (toki-leader-def
   "SPC" '(execute-extended-command :wk "M-x"))
