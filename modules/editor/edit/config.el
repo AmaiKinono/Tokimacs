@@ -77,9 +77,9 @@
     "C-j" '(newline :wk "[Newline]")
     "." '(toki-search-insert-.* :wk "[.*]")
     "a" '(toki-search-insert-anychar :wk "[Anychar]")
-    "g" '(toki-search-insert-group :wk "[Group]")
-    "w" '(toki-search-wrap-word-boundary :wk "(Word Bounds)")
-    "s" '(toki-search-wrap-symbol-boundary :wk "(Symbol Bounds)")
+    "g" '(toki-search-insert-group :wk "(Group)")
+    "w" '(toki-search-insert-word-boundary :wk "(Word Bounds)")
+    "s" '(toki-search-insert-symbol-boundary :wk "(Symbol Bounds)")
     "C" '(isearch-toggle-case-fold :wk "<> Case Fold")
     "R" '(isearch-toggle-regexp :wk "<> Regexp Search"))
   (define-advice isearch-mb--update-prompt (:around (fn &rest _) show-case-fold-info)
@@ -125,34 +125,47 @@
     (interactive)
     (insert "[^z-a]"))
 
-  (defun toki-insert-group ()
+  (defun toki-search-insert-group ()
     "Insert a pair of regexp group delimiter, or wrap them around active region."
     (interactive)
-    (when (use-region-p)
-      (save-excursion
-        (goto-char (region-beginning))
-        (insert "\\(")
-        (goto-char (region-end))
-        (insert "\\)"))
-      (insert "\\(\\)")))
+    (if (use-region-p)
+        (let ((beg (region-beginning))
+              (end (region-end)))
+          (save-excursion
+            (goto-char end)
+            (insert "\\)")
+            (goto-char beg)
+            (insert "\\(")))
+      (insert "\\(\\)")
+      (forward-char -2)))
 
-  (defun toki-search-wrap-word-boundary ()
-    "Wrap active region or the search query inside a pair of word boundary."
+  (defun toki-search-insert-word-boundary ()
+    "Insert a pair of word boundary, or wrap them around active region."
     (interactive)
-    (save-excursion
-      (goto-char (if (use-region-p) (region-beginning) (minibuffer-prompt-end)))
-      (insert "\\<")
-      (goto-char (if (use-region-p) (region-end) (point-max)))
-      (insert "\\>")))
+    (if (use-region-p)
+        (let ((beg (region-beginning))
+              (end (region-end)))
+          (save-excursion
+            (goto-char end)
+            (insert "\\>")
+            (goto-char beg)
+            (insert "\\<")))
+      (insert "\\<\\>")
+      (forward-char -2)))
 
-  (defun toki-search-wrap-symbol-boundary ()
-    "Wrap active region or the search query inside a pair of symbol boundary."
+  (defun toki-search-insert-symbol-boundary ()
+    "Insert a pair of symbol boundary, or wrap them around active region."
     (interactive)
-    (save-excursion
-      (goto-char (if (use-region-p) (region-beginning) (minibuffer-prompt-end)))
-      (insert "\\_<")
-      (goto-char (if (use-region-p) (region-end) (point-max)))
-      (insert "\\_>"))))
+    (if (use-region-p)
+        (let ((beg (region-beginning))
+              (end (region-end)))
+          (save-excursion
+            (goto-char end)
+            (insert "\\_>")
+            (goto-char beg)
+            (insert "\\_<")))
+      (insert "\\_<\\_>")
+      (forward-char -3))))
 
 ;;;; Replace
 
