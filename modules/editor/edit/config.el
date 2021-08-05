@@ -82,23 +82,16 @@
     "s" '(toki-search-insert-symbol-boundary :wk "(Symbol Bounds)")
     "C" '(isearch-toggle-case-fold :wk "<> Case Fold")
     "R" '(isearch-toggle-regexp :wk "<> Regexp Search"))
-  (define-advice isearch-mb--update-prompt (:around (fn &rest _) show-case-fold-info)
+  (define-advice isearch-mb--update-prompt (:around (fn &rest args) show-case-fold-info)
     "Show case fold info in the prompt."
-    (when isearch-mb--prompt-overlay
-      (let ((count (isearch-lazy-count-format))
-            (len (or (overlay-get isearch-mb--prompt-overlay 'isearch-mb--len) 0)))
-        (overlay-put isearch-mb--prompt-overlay
-                     'isearch-mb--len (max len (length count)))
-        (overlay-put isearch-mb--prompt-overlay
-                     'before-string
-                     (concat count ;; Count is padded so that it only grows.
-                             (make-string (max 0 (- len (length count))) ?\ )
-                             ;; PATCH
-                             (if isearch-case-fold-search "[Case Fold] " "")
-                             (capitalize
-                              (isearch--describe-regexp-mode
-                               isearch-regexp-function)))))))
-
+    (cl-letf* ((isearch--describe-regexp-mode-orig
+                (symbol-function 'isearch--describe-regexp-mode))
+               ((symbol-function 'isearch--describe-regexp-mode)
+                (lambda (regexp-function &optional space-before)
+                  (concat (if isearch-case-fold-search "[Case Fold] " "")
+                          (funcall isearch--describe-regexp-mode-orig
+                                   regexp-function space-before)))))
+      (funcall fn args)))
   (isearch-mb-mode))
 
 ;; Ref: https://stackoverflow.com/questions/285660/automatically-wrapping-i-search/36707038#36707038
@@ -113,6 +106,25 @@
     (cl-letf (((symbol-function 'isearch-search)
                (ad-get-orig-definition #'isearch-search)))
       (isearch-repeat (if isearch-forward 'forward 'backward)))))
+
+;; The current count is 0 when we begin searching using isearch-mb.  This is
+;; fixed in Emacs 28, the following advice is a dirty backport.
+(when (version< emacs-version "28")
+  (define-advice isearch-lazy-highlight-buffer-update (:around (fn &rest args) fix)
+  "Fix the problem of current count being 0 when starting the search."
+  (cl-letf* ((my-opoint nil)
+             (window-group-start-orig (symbol-function 'window-group-start))
+             ((symbol-function 'window-group-start)
+              (lambda (&optional window)
+                (setf my-opoint (point))
+                (funcall window-group-start-orig window)))
+             (gethash-orig (symbol-function 'gethash))
+             ((symbol-function 'gethash)
+              (lambda (key &rest args)
+                (if (integerp key)
+                    (apply gethash-orig my-opoint args)
+                  (apply gethash-orig key args)))))
+    (apply fn args))))
 
 (with-eval-after-load 'isearch-mb
   (defun toki-search-insert-.* ()
