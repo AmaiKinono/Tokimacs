@@ -478,7 +478,7 @@ these codes."
 (general-def
   :keymaps 'override
   "C-x" (general-predicate-dispatch nil
-          (region-active-p) 'toki-kill-region
+          (region-active-p) 'toki-kill-active-region
           t (general-key "C-x"
               :setup (general-override-mode -1)
               :teardown (general-override-mode)))
