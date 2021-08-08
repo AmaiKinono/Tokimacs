@@ -22,6 +22,7 @@ They are also enabled in some appropriate minor modes like
   :hook (after-init . evil-mode)
   :config
   (toki/setq
+   evil-undo-system 'undo-fu
    evil-disable-insert-state-bindings t
    ;; We want all modes, except a few (REPL, terminal, etc.), to start in
    ;; normal state.
