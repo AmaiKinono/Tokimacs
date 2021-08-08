@@ -5,7 +5,7 @@
 
 ;;; Commentary:
 
-;; toki-modeline offers a simple modeline to use with mini-modeline.
+;; toki-modeline offers a simple & elegant modeline.
 
 ;;; Code:
 
@@ -29,6 +29,10 @@
 (defvar toki-modeline-path-truncated-length 1
   "How many letters to leave after truncation.")
 
+(defvar toki-modeline-update-interval 0.2
+  "Update interval in secs.
+Set to nil to update on every redisplay.")
+
 (defface toki-modeline-time-face
   '((((background light))
      :foreground "#7c7c7c")
@@ -50,6 +54,10 @@
 (defface toki-modeline-battery-critical-face
   '((t :inherit 'error))
   "Face for battery info when power is critical.")
+
+(defface toki-modeline-winum-face
+  '((t :inherit 'font-lock-function-name-face))
+  "Face for winum info.")
 
 (defface toki-modeline-location-face
   '((((background light))
@@ -104,7 +112,33 @@ This is used in the path info."
                            (+ dot-num
                               toki-modeline-path-truncated-length)))))
 
+(defun toki-modeline/right-align-space (string)
+  "Return a propertized space that aligns STRING to the right."
+  (setq string (replace-regexp-in-string "%%" "%" string))
+  (setq string (propertize string 'face 'mode-line))
+  (let ((len (string-width string)))
+    (let ((height (face-attribute 'mode-line :height))
+          ratio)
+      (cond
+       ((floatp height)
+        (setq ratio height))
+       ((integerp height)
+        (setq ratio (/ (float ratio)
+                       (face-attribute 'default :height))))
+       ;; HEIGHT can also be a function, for now I don't deal with it.
+       )
+      (when ratio (setq len (* len ratio))))
+    (unless (display-graphic-p) (setq len (1+ len)))
+    (propertize " " 'display `((space :align-to (- right ,len))))))
+
 ;;;; Info functions
+
+(defun toki-modeline-location ()
+  "Return the location info."
+  (let ((s (format-mode-line "%l:%c %p")))
+    (when (string-match (rx (or line-start (not "%")) "%" line-end) s)
+      (setq s (concat s "%%%")))
+    s))
 
 (defun toki-modeline-path ()
   "Return the path info."
@@ -199,30 +233,68 @@ This is used in the path info."
 
 ;;;; Modeline formats
 
+(defvar toki-modeline/selected-window nil)
+
+;; NOTE: This doesn't deal with miniframes.
+(defun toki-modeline/update-selected-window (frame)
+  (setq toki-modeline/selected-window (frame-selected-window frame)))
+
 (defvar toki-modeline-main-format
   (list
    '(:eval (toki-modeline-pad
-            (propertize "(%l:%c %p)" 'face 'toki-modeline-location-face)))
+            (propertize (toki-modeline-location) 'face 'toki-modeline-location-face)))
    '(:eval (toki-modeline-pad
             (propertize (toki-modeline-path) 'face 'toki-modeline-path-face)))
    '(:eval (toki-modeline-pad
             (propertize (toki-modeline-vc) 'face 'toki-modeline-vc-face)))
-   '(:eval (if (bound-and-true-p evil-mode)
-               (toki-modeline-pad
-                (propertize mode-name 'face 'toki-modeline-mode-face))
-             (propertize mode-name 'face 'toki-modeline-mode-face)))
+   '(:eval (toki-modeline-pad
+            (propertize mode-name 'face 'toki-modeline-mode-face)))
    '(:eval (propertize (toki-modeline-evil) 'face 'toki-modeline-evil-face)))
-  "A minimal modeline format that shows essential info.
-Set `mini-modeline-r-format' to this to use it.")
+  "A minimal modeline format that shows essential info.")
+
+(defvar toki-modeline-left-format
+  (when (bound-and-true-p winum-mode)
+    (list '(:eval (propertize (concat " #" (format "%s" (winum-get-number)))
+                              'face 'toki-modeline-winum-face))))
+  "A minimal modeline format for displaying in the left.")
 
 (defvar toki-modeline-additional-format
   (list
    '(:eval (toki-modeline-pad
             (toki-modeline-battery)))
    '(:eval (propertize (toki-modeline-time) 'face 'toki-modeline-time-face)))
-  "A modeline format showing battery and time info.
-It's meant to be shown at the left side.  Set
-`mini-modeline-l-format' to this to use it.")
+  "A modeline format showing battery and time info.")
+
+(defvar-local toki-modeline/cache (make-hash-table :test #'eq))
+
+(defvar toki-modeline/last-update nil)
+
+(defun toki-modeline-compute (&optional force)
+  (let (format)
+    (setq format
+          (if (or force
+                  (null toki-modeline-update-interval)
+                  (null (gethash (selected-window) toki-modeline/cache))
+                  (> (float-time (time-since toki-modeline/last-update))
+                     toki-modeline-update-interval))
+              (let* ((l (format-mode-line toki-modeline-left-format))
+                     (r (string-trim (format-mode-line toki-modeline-main-format)))
+                     (pad (toki-modeline/right-align-space r))
+                     (format (list l pad r)))
+                (puthash (selected-window) format toki-modeline/cache)
+                (setq toki-modeline/last-update (current-time))
+                format)
+            (gethash (selected-window) toki-modeline/cache)))
+    (if (eq (selected-window) toki-modeline/selected-window)
+        format
+      (mapcar (lambda (s) (propertize s 'face 'mode-line-inactive))
+              format))))
+
+(defun toki-modeline-setup ()
+  (add-hook 'window-selection-change-functions
+            #'toki-modeline/update-selected-window)
+  (toki-modeline/update-selected-window (selected-frame))
+  (setq-default mode-line-format '(:eval (toki-modeline-compute))))
 
 (provide 'toki-modeline)
 

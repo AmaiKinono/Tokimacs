@@ -136,38 +136,14 @@ more than 2, it will ask for the number of the window."
     (list (awesome-tab-get-group-name (current-buffer))))
   (toki/setq awesome-tab-buffer-groups-function #'toki-buffer-group)
 
-  ;; show window numbers on the header line.
-  (define-advice awesome-tab-line (:around (fn) fix)
-    "show window number"
-    (let* ((tabline (funcall fn))
-           (win-num (winum-get-number)))
-      (if win-num
-          (push
-           (propertize
-            (format " %s " win-num) 'face 'toki-window-number) tabline)
-        tabline)))
-
-  (defface toki-window-number
-    '((t))
-    "Face for active window number in tabline.")
-
-  (defun toki-refresh-win-num ()
-    (set-face-attribute 'toki-window-number nil
-                        ;;:height awesome-tab-face-height
-                        :background (face-background 'default)
-                        :foreground (face-foreground 'font-lock-function-name-face)))
-
   (defun toki-refresh-tabs ()
     "Refresh the display of tabs. This runs with`toki-after-load-theme-hook'
 in order to have the right face colors."
     (interactive)
-    (toki-refresh-win-num)
     (awesome-tab-refresh-display))
 
   (add-hook 'toki-after-load-theme-hook #'toki-refresh-tabs)
-  (add-hook 'after-change-major-mode-hook #'toki-refresh-tabs)
-
-  (toki-refresh-win-num))
+  (add-hook 'after-change-major-mode-hook #'toki-refresh-tabs))
 
 ;;; Buffer <-> Window
 

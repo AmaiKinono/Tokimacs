@@ -350,67 +350,19 @@ See the docstring of `toki-fontset-font-list' for details."
 
 (use-package toki-modeline
   :trigger after-init-hook
-  :straight nil)
-
-(use-package mini-modeline
-  :after toki-modeline
+  :straight nil
   :config
-  (toki/setq
-   ;; We don't need this.  We will use a thin modeline to distinguish between
-   ;; active and inactive windows.
-   mini-modeline-enhance-visual nil
-   ;; Let mini modeline show immediately after startup.
-   mini-modeline-update-interval 0.0
-   mini-modeline-r-format toki-modeline-main-format)
-  ;; Prevent frequent update of mini modeline after its first display.
-  (run-with-idle-timer 0.1 'norepeat
-                       (lambda ()
-                         (toki/setq mini-modeline-update-interval 0.5)))
-  (if toki-gui-p
-      (toki/setq mini-modeline-right-padding 1)
-    (toki/setq mini-modeline-right-padding 2))
-  (mini-modeline-mode))
+  (toki-modeline-setup))
 
-(with-eval-after-load 'mini-modeline
-  (define-advice mini-modeline-display (:around (fn &optional arg) update-when-needed)
-    "See https://github.com/kiennq/emacs-mini-modeline/pull/50.
-The reason for this patch (from Eli Zaretskii):
+(defun toki/modeline-refresh-face ()
+  ;; NOTE: I can't set the height...
+  (let ((bg (face-attribute 'default :background)))
+    (set-face-attribute 'mode-line nil
+                        :background bg)
+    (set-face-attribute 'mode-line-inactive nil
+                        :background bg :inherit 'shadow)))
 
-What this (package) does is modify a non-current buffer at high
-frequency, so the main redisplay optimization of updating only
-the selected window will be disabled. And when that happens,
-Emacs examines all the windows on all the frames to see which
-ones need to be updated, something that takes more cycles.
-
-This also makes me consider if we should use vanilla per-buffer
-modeline.  The price mentioned above is simply unavoidable with
-mini-modeline or similar plugins."
-    (let ((old-cache mini-modeline--cache))
-      (cl-letf* ((erase-buffer-orig (symbol-function 'erase-buffer))
-                 ((symbol-function 'erase-buffer)
-                  (if (eq (current-buffer) mini-modeline--minibuffer)
-                      (lambda ()
-                        (if (equal mini-modeline--cache old-cache)
-                            (throw 'noupdate nil)
-                          (funcall erase-buffer-orig)))
-                    (lambda () (funcall erase-buffer-orig)))))
-        (catch 'noupdate
-          (funcall fn arg)))))
-  ;; This solves https://github.com/kiennq/emacs-mini-modeline/issues/45, but
-  ;; regress https://github.com/kiennq/emacs-mini-modeline/issues/23.  The
-  ;; former is a more severe problem.  This makes me wants to use vanilla
-  ;; modeline more.
-  (define-advice mini-modeline--enable (:around (fn) dont-use-timer)
-    (cl-letf* ((run-with-timer-orig (symbol-function 'run-with-timer))
-               ((symbol-function 'run-with-timer)
-                (lambda (secs repeat function &rest args)
-                  (if (eq function #'mini-modeline-display)
-                      (add-hook 'pre-redisplay-functions #'mini-modeline-display)
-                    (funcall run-with-timer-orig secs repeat function args)))))
-      (funcall fn)))
-  (define-advice mini-modeline--disable (:around (fn) dont-use-timer)
-    (funcall fn)
-    (remove-hook 'pre-redisplay-functions #'mini-modeline-display)))
+(add-hook 'toki-after-load-theme-hook #'toki/modeline-refresh-face)
 
 ;;; Misc
 
@@ -427,19 +379,10 @@ mini-modeline or similar plugins."
   :straight nil
   :defer t)
 
-(defun toki-toggle-fullscreen ()
-  "Toggle fullscreen state of selected frame.
-When fullscreen, show time and battery information in the echo area."
-  (interactive)
-  (toggle-frame-fullscreen)
-  (if (memq (frame-parameter nil 'fullscreen) '(fullscreen fullboth))
-      (setq mini-modeline-l-format toki-modeline-additional-format)
-    (setq mini-modeline-l-format '(:eval (mini-modeline-msg)))))
-
 ;;; Keybinds
 
 (toki-ui-def
-  "f" '(toki-toggle-fullscreen :wk "<> Fullscreen")
+  "f" '(toggle-frame-fullscreen :wk "<> Fullscreen")
   "m" '(toggle-frame-maximized :wk "<> Maximize")
   "t" `(,(toki/make-combo toki-switch-theme) :wk "Switch Theme")
   "T" '(toki-load-theme :wk "Load Theme")
