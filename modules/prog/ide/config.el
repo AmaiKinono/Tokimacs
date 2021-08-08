@@ -36,24 +36,6 @@ chars.  This should be useful for CJK users."
                      (or (and (string-match (rx (not (category latin))) cand)
                               (> (length cand) 12))))))
       (cl-remove-if exclude cands)))
-  (define-advice company-pseudo-tooltip-show (:around (fn &rest args) dont-hide-text)
-    "Don't let company tooltip mask my text.
-You'll notice when the tooltip pops up, the text below it are
-pushed down.  This is my desired behavior, because:
-
-- The tooltip pops up while I'm typing.  I don't explicitely
-  control it.
-- I may want to read the code below current line at anytime while
-  typing."
-    (cl-letf* ((make-overlay-orig
-                (symbol-function 'make-overlay))
-               ((symbol-function 'make-overlay)
-                (lambda (beg end &rest args)
-                  (apply make-overlay-orig beg beg args))))
-      (apply fn args)))
-  (define-advice company-buffer-lines (:around (fn &rest _) dont-hide-text)
-    "See the `dont-hide-text' advice around `company-pseudo-tooltip-show'."
-    nil)
   ;; NOTE: "RET" and "TAB" are for terminal Emacs (equivalent to "C-m" and
   ;; "C-i"), while "<return>" and "<tab>" are for GUI Emacs.
   (general-unbind
