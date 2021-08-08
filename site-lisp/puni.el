@@ -38,48 +38,6 @@ Notice this returns nil if point is before/in the opening
 delimiter, or after/in the end delimiter."
   (eq (syntax-ppss-context (syntax-ppss)) 'comment))
 
-(defun puni--begin-of-single-line-comment-p ()
-  "See if point is at the opening delimiter of a single line comment.
-If this is true, return the point after the closing
-delimiter (i.e., after the newline char).  Otherwise return nil."
-  (save-excursion
-    (and (eq (puni--syntax-char-after) ?<)
-         (progn (forward-comment 1)
-                (or (eobp) (eq (char-before) ?\n)))
-         (point))))
-
-(defun puni--end-of-single-line-comment-p ()
-  "See if point is after the end delimiter of a single line comment.
-The end delimiter is a newline.
-
-This doesn't work for single line comment at the end of file
-without a trailing newline."
-  (and (eq (puni--syntax-char-after (1- (point))) ?>)
-       (eq (char-before) ?\n)))
-
-(defun puni--pair-or-in-delim (pt bound)
-  "Return t if the thing at PT is in, or paired with the delimiter at BOUND.
-When PT is before BOUND, the \"thing at PT\" is the thing after
-PT, and \"delimiter\" refers to the delimiter before BOUND, vice
-versa.
-
-This uses syntax table and some heuristic, and is not completely
-reliable.  It's also not generic, as it's designed only for a
-branch in `puni--strict-forward/backward-sexp' functions."
-  (when (eq pt bound) (error "PT is the same as BOUND"))
-  (let ((beg (min pt bound))
-        (end (max pt bound)))
-    (or (eq (save-excursion (goto-char beg)
-                            (or (puni--forward-atom end)
-                                (puni--forward-same-syntax end)))
-            end)
-        (let ((beg-syntax (puni--syntax-char-after beg))
-              (end-syntax (puni--syntax-char-after (1- end))))
-          (or (and (eq beg-syntax ?\() (eq end-syntax ?\)))
-              (and (eq beg-syntax ?<) (eq end-syntax ?>))
-              (and (eq beg-syntax end-syntax)
-                   (not (memq beg-syntax '(?\s ?w ?_)))))))))
-
 ;;;;; Errors
 
 (defun puni--error-if-before-point (bound)
@@ -91,16 +49,6 @@ branch in `puni--strict-forward/backward-sexp' functions."
   "Error if BOUND is non-nil and is after point."
   (when (and bound (> bound (point)))
     (error "BOUND is after point")))
-
-(defun puni--bob-error ()
-  "Signal an error if point is at the beginning of buffer."
-  (when (bobp)
-    (signal 'beginning-of-buffer nil)))
-
-(defun puni--eob-error ()
-  "Signal an error if point is and the end of buffer."
-  (when (eobp)
-    (signal 'end-of-buffer nil)))
 
 ;;;;; Syntax
 
@@ -178,7 +126,8 @@ This is the same as `skip-syntax-forward', except that:
 
 (defun puni--forward-same-syntax (&optional bound)
   "Move point past all characters with the same syntax class.
-It returns the point after move.
+It returns the point after move.  If BOUND is non-nil, stop
+before BOUND.
 
 This is more robust than `forward-same-syntax' because it takes
 `syntax-table' text properties into account.  See the docstring
@@ -205,8 +154,8 @@ of `char-syntax'."
 
 (defun puni--forward-atom (&optional bound)
   "Move forward an atom if there's one in front.
-An atom is a symbol, plus the escape chars in it, and expression
-prefixes before it.
+An atom is a symbol, allowing escaped non-symbol chars in it, and
+an expression prefixe before it.
 
 If BOUND is non-nil, stop before BOUND."
   ;; It may be a good idea to treat a series of punctuations as an atom (think
@@ -215,7 +164,11 @@ If BOUND is non-nil, stop before BOUND."
   (puni--error-if-before-point bound)
   (let ((from (point)))
     (puni--forward-syntax "'" bound)
-    (puni--forward-syntax "_w\\" bound)
+    (while (or (puni--forward-syntax "_w" bound)
+               (when (eq (puni--syntax-char-after) ?\\)
+                 (puni--forward-syntax "\\" bound)
+                 (unless (eq (point) bound) (forward-char))
+                 t)))
     (let ((to (point)))
       (unless (eq from to)
         to))))
@@ -224,11 +177,60 @@ If BOUND is non-nil, stop before BOUND."
   "Backward version of `puni--forward-atom'."
   (puni--error-if-after-point bound)
   (let ((from (point)))
-    (puni--backward-syntax "_w\\" bound)
+    ;; In case we start after an escape char.
+    (puni--backward-syntax "\\" bound)
+    (while (or (puni--backward-syntax "_w" bound)
+               (when (eq (puni--syntax-char-after (- (point) 2)) ?\\)
+                 (unless (eq (point) bound) (forward-char -1))
+                 (puni--backward-syntax "\\" bound)
+                 t)))
     (puni--backward-syntax "'" bound)
     (let ((to (point)))
       (unless (eq from to)
         to))))
+
+(defun puni--in-atom-p (beg end)
+  "Return t if the region between BEG and END is in one atom.
+See `puni--forward-atom' to know what's an atom."
+  (save-excursion
+    (goto-char beg)
+    (eq (puni--forward-atom end) end)))
+
+;;;;; Basic move: string
+
+(defun puni--forward-string ()
+  "Move forward a string.
+Return the point if success, otherwise return nil."
+  (let ((from (point)))
+    (save-excursion
+      (puni--forward-syntax "\\")
+      (puni--forward-syntax "\"")
+      (when (and (not (eq from (point)))
+                 (puni--in-string-p))
+        ;; The default `forward-sexp' could jump over a string.
+        ;; `forward-sexp-function' from the major-mode sometimes doesn't, when
+        ;; they jump to the end of a further delimiter.
+        (let ((forward-sexp-function nil))
+          (goto-char from)
+          (forward-sexp))
+        (let ((to (point)))
+          (when (not (eq from to))
+            (goto-char to)))))))
+
+(defun puni--backward-string ()
+  "Backward version of `puni--forward-string'."
+  (let ((from (point)))
+    (save-excursion
+      (puni--backward-syntax "\"")
+      (puni--backward-syntax "\\")
+      (when (and (not (eq from (point)))
+                 (puni--in-string-p))
+        (let ((forward-sexp-function nil))
+          (goto-char from)
+          (forward-sexp -1))
+        (let ((to (point)))
+          (when (not (eq from to))
+            (goto-char to)))))))
 
 ;;;;; Basic move: comment
 
@@ -264,21 +266,44 @@ Return the point if success."
         (setq to (point))))
     (when to (goto-char to))))
 
+;;;;; Basic move: single line comment
+
+;; This section has nothing to do with core functionality, but only the
+;; interactive `puni-forward/backward-sexp' commands.
+
+(defun puni--begin-of-single-line-comment-p ()
+  "Return t if point is at the opening delimiter of a single line comment."
+  (save-excursion
+    (and (eq (puni--syntax-char-after) ?<)
+         (progn (forward-comment 1)
+                (or (eobp) (eq (char-before) ?\n))))))
+
+(defun puni--end-of-single-line-comment-p ()
+  "Return t if point is after the end delimiter of a single line comment.
+The end delimiter is a newline.
+
+This doesn't work for single line comment at the end of file
+without a trailing newline."
+  (and (eq (puni--syntax-char-after (1- (point))) ?>)
+       (eq (char-before) ?\n)))
+
 (defun puni--forward-consecutive-single-line-comments ()
   "Jump forward a series of single-line comments.
 Return the point if success."
   (let ((from (point))
         to)
     (save-excursion
-      (while (and (when-let ((after (puni--begin-of-single-line-comment-p)))
-                    (goto-char after))
-                  (unless (puni--line-empty-p)
-                    (puni--forward-syntax " ") t)))
+      (while (and (puni--begin-of-single-line-comment-p)
+                  (progn (forward-line)
+                         (beginning-of-line)
+                         (puni--forward-syntax " ")
+                         t)))
       (unless (eq from (point))
         (puni--backward-blanks from)
         (setq to (point))))
     (when to (goto-char to))))
 
+;; TODO: I found this not easy to use...
 (defun puni--backward-consecutive-single-line-comments ()
   "Jump backward a series of single-line comments.
 Return the point if success."
@@ -320,7 +345,62 @@ while the one from `web-mode' just does nothing and returns nil."
         (unless (eq from to) to))
     (error nil)))
 
+;; NOTE: The real challenge is what to do when the delimiter is not the
+;; symbol/char at point, but something like "bound of symbol" or "newline"?
+(defun puni--pair-or-in-delim-p (beg end)
+  "Return t if BEG and END is a pair of delimiter, or in the same delimiter.
+This uses syntax table and some heuristic, and is not completely
+reliable.  It's also not generic, as it's designed only for a
+branch in `puni--inside-delim-p'.  So it assumes one of BEG and
+END is the bound of delimiter."
+  (when (eq beg end) (error "BEG is the same as END"))
+  (or (eq beg (1- end))
+      (eq (save-excursion (goto-char beg)
+                          (puni--forward-same-syntax end))
+          end)
+      (let ((beg-syntax (puni--syntax-char-after beg))
+            (end-syntax (puni--syntax-char-after (1- end)))
+            (beg-char (char-after beg))
+            (end-char (char-before end)))
+        ;; If beg & end are a pair of delimiters, we think beg is paired with
+        ;; end.
+        (or (and (eq beg-syntax ?\() (eq end-syntax ?\)))
+            (and (eq beg-syntax ?<) (eq end-syntax ?>))
+            ;; If we've reached here, we need to consider the situations
+            ;; where BOUND is a delimiter (as assumed), but doesn't have
+            ;; delimiter syntax.
+            (and (eq beg-syntax ?.) (eq end-syntax ?.)
+                 (eq beg-char ?<) (eq end-char ?>))
+            (and (eq beg-syntax end-syntax)
+                 (eq beg-char end-char))))))
+
+(defun puni--inside-delim-p (pt beg end direction)
+  "See if PT is inside the delimiters at BEG or END.
+The delimiters could be multi-char (like html tags).  By
+\"inside\" we also mean \"just after the opening delimiter\", or
+\"just before the closing delimiter\".
+
+if DIRECTION is `forward', check if the char after PT is inside
+any of the delimiters, or if DIRECTION is `backward', check the
+char before PT instead."
+  (unless (< beg pt end) (error "PT is not between BEG and END"))
+  ;; Assume a string can't be a delimiter. We also assume an atom can't be a
+  ;; delimiter.  This is not true, but many major modes thinks "a = b" is a
+  ;; sexp, where it's actually safe to delete a or b.  In this situation, it's
+  ;; the "bound of symbol" being the delimiter, not the symbol itself.
+  (unless (or (save-excursion (goto-char beg) (or (puni--forward-string)
+                                                  (puni--forward-atom)))
+              (save-excursion (goto-char end) (or (puni--backward-string)
+                                                  (puni--backward-atom))))
+    (pcase direction
+      ('forward (or (puni--pair-or-in-delim-p beg (1+ pt))
+                    (puni--pair-or-in-delim-p pt end)))
+      ('backward (or (puni--pair-or-in-delim-p beg pt)
+                     (puni--pair-or-in-delim-p (1- pt) end)))
+      (_ (error "Invalid DIRECTION")))))
+
 ;; NOTE: Try delete `(something)'
+;; NOTE: \"thing\"
 
 (defun puni--strict-primitive-forward-sexp ()
   "Move forward a sexp, return the point if success, otherwise return nil.
@@ -334,109 +414,86 @@ opening quote of the next one, forms a string.  It also doesn't
 work well for balanced comment blocks.  So we'll build on top of
 this function until we have `puni-strict-forward-sexp', which
 works on these situations."
-  (when-let* ((beg (point))
-              ;; This incidentally checks if the point is at the end of buffer.
-              (end (save-excursion (puni--primitive-forward-sexp)))
-              (beg-of-maybe-another-sexp
-               (save-excursion (goto-char end)
-                               (puni--primitive-forward-sexp -1))))
-    (let (pt)
+  (let (beg end beg-of-maybe-another-sexp end-of-maybe-another-sexp)
+    (save-excursion
+      (setq beg (point))
+      (setq end (puni--primitive-forward-sexp))
+      (setq beg-of-maybe-another-sexp (puni--primitive-forward-sexp -1))
+      (setq end-of-maybe-another-sexp (puni--primitive-forward-sexp)))
+    ;; Make sure we can actually go forward a sexp.  This also incidentally
+    ;; checks if the point is at the end of buffer.  Notice that
+    ;; beg/end-of-maybe-another-sexp shouldn't be nil if end is non-nil, unless
+    ;; we are using a `forward-sexp-function' that really doesn't work.
+    (when (and beg end beg-of-maybe-another-sexp end-of-maybe-another-sexp)
       (cond
-       ;; This shouldn't happen unless `forward-sexp' really has no idea what's
-       ;; a balanced expression.  The only situation I've found is, there are
-       ;; some punctuations after beg, like:
+       ;; Logically, this shouldn't happen.  In reality, the only situation
+       ;; I've found is the default sexp don't work with punctuations well.
+       ;; Try this:
        ;;
-       ;;     foo|. bar
+       ;;     foo|. bar        (forward and backward sexp)
        ;;
-       ;; When we move forward, it goes to the next end of symbol:
+       ;; Or this:
        ;;
-       ;;     foo. bar|
+       ;;     foo bar|.        (forward -> backward -> forward sexp)
        ;;
-       ;; When we then move backward, it goes to the previous beginning of
-       ;; symbol:
+       ;; The punctuations are skipped over while finding the next sexp.
+       ;; When this happens, we think the next syntax block that's skipped
+       ;; over is a balanced expression.
        ;;
-       ;;     foo. |bar
+       ;; NOTE: another situation:
        ;;
-       ;; This branch deals with this situation.  TODO: We should split these
-       ;; with the situation where `forward-sexp' knows the beg/end of the
-       ;; bigger sexp.
+       ;;     <p|></p>
        ((> beg-of-maybe-another-sexp beg)
         (setq end (save-excursion
                     (goto-char beg)
-                    (puni--forward-syntax "."))))
-       ;; This can happen in html (in `xml-mode'):
-       ;;
-       ;;     <p>text|</p>        call (forward-sexp)
-       ;;     <p>text</p>|        call (backward-sexp)
-       ;;     |<p>text</p>
-       ;;
-       ;; It also happens when the original state is:
-       ;;
-       ;;     <p>text</|p>
-       ;;
-       ;; In this situation, we shouldn't jump as it changes the current depth.
-       ;; But it may also be the case where the point is inside an atom:
-       ;;
-       ;;     some|-symbol        call (forward-sexp)
-       ;;     some-symbol|        call (backward-sexp)
-       ;;     |some-symbol
-       ;;
-       ;; So we need to check if this is the case.
+                    (or (puni--forward-atom)
+                        (puni--forward-string)
+                        (puni--forward-same-syntax)))))
+       ((not (eq end end-of-maybe-another-sexp))
+        (when (puni--inside-delim-p beg beg-of-maybe-another-sexp end 'forward)
+          (setq end nil)))
+       ;; If we didn't fall into the last branch, that means BEG is inside
+       ;; another bigger sexp, and `forward-sexp' knows the bounds of that
+       ;; bigger sexp.
        ((< beg-of-maybe-another-sexp beg)
-        (cond
-         ;; The same punctuation problem as mentioned above.
-         ((save-excursion
-            (goto-char beg-of-maybe-another-sexp)
-            (not (eq (puni--primitive-forward-sexp) end)))
-          (setq end (save-excursion
-                      (goto-char beg)
-                      (puni--forward-syntax "."))))
-         ;; This means the point is in the middle of an atom, and the atom
-         ;; itself is not a delimiter.  We can delete half of an atom safely.
-         ((save-excursion
-            (goto-char beg-of-maybe-another-sexp)
-            (eq (puni--forward-atom end) end))
-          nil)
-         ;; This means the point is in the middle of an atom, and the initial
-         ;; `forward-sexp' takes us to a position after the end of the atom.
-         ;; If this happens, we could assume the atom itself is not the
-         ;; delimiter, and the part after it is.
-         ((save-excursion
-            (goto-char beg)
-            (and (setq pt (puni--forward-atom))
-                 (< pt end)))
-          (setq end pt))
-         (t (setq end nil))))))
-    (when end (goto-char end))))
+        (if (puni--inside-delim-p beg beg-of-maybe-another-sexp end 'forward)
+            (setq end nil)
+          (setq end (save-excursion (or (puni--forward-atom)
+                                        (puni--forward-string)
+                                        (puni--forward-same-syntax))))))
+       ;; The implicit branch here is (= beg-of-maybe-another-sexp beg).  We
+       ;; don't need to do anything as this means BEG and END forms a
+       ;; balanced expression.
+       )
+      (when end (goto-char end)))))
 
 ;; TODO: fix this according to the forward version.
 (defun puni--strict-primitive-backward-sexp ()
   "Backward version of `puni--strict-primitive-forward-sexp'."
-  (when-let* ((end (point))
-              (beg (save-excursion (puni--primitive-forward-sexp -1)))
-              (end-of-maybe-bigger-sexp
-               (save-excursion (goto-char beg)
-                               (puni--primitive-forward-sexp))))
-    (let (pt)
+  (let (beg end beg-of-maybe-another-sexp end-of-maybe-another-sexp)
+    (save-excursion
+      (setq end (point))
+      (setq beg (puni--primitive-forward-sexp -1))
+      (setq end-of-maybe-another-sexp (puni--primitive-forward-sexp))
+      (setq beg-of-maybe-another-sexp (puni--primitive-forward-sexp -1)))
+    (when (and beg end beg-of-maybe-another-sexp end-of-maybe-another-sexp)
       (cond
-       ((< end-of-maybe-bigger-sexp end)
+       ((< end-of-maybe-another-sexp end)
         (setq beg (save-excursion
                     (goto-char end)
-                    (puni--backward-syntax "."))))
-       ((> end-of-maybe-bigger-sexp end)
-        (cond
-         ((save-excursion
-            (goto-char beg)
-            (eq (puni--forward-atom end-of-maybe-bigger-sexp)
-                end-of-maybe-bigger-sexp))
-          nil)
-         ((save-excursion
-            (goto-char end)
-            (and (setq pt (puni--backward-atom))
-                 (> pt beg)))
-          (setq beg pt))
-         (t (setq beg nil))))))
-    (when beg (goto-char beg))))
+                    (or (puni--backward-atom)
+                        (puni--backward-string)
+                        (puni--backward-same-syntax)))))
+       ((not (eq beg beg-of-maybe-another-sexp))
+        (when (puni--inside-delim-p end beg end-of-maybe-another-sexp 'backward)
+          (setq beg nil)))
+       ((> end-of-maybe-another-sexp end)
+        (if (puni--inside-delim-p end beg end-of-maybe-another-sexp 'backward)
+            (setq beg nil)
+          (setq beg (save-excursion (or (puni--backward-atom)
+                                        (puni--backward-string)
+                                        (puni--backward-same-syntax)))))))
+      (when beg (goto-char beg)))))
 
 (defun puni--strict-primitive-forward-sexp-in-thing (probe thing)
   "Move strict forward a sexp in certain thing.
@@ -454,7 +511,7 @@ and error \"Not in a THING\"."
         pos)
     (when to
       (save-excursion
-        (while (and (puni--forward-same-syntax)
+        (while (and (puni--forward-same-syntax to)
                     (funcall probe)
                     (setq pos (point))
                     (< (point) to))))
@@ -469,7 +526,7 @@ and error \"Not in a THING\"."
         pos)
     (when to
       (save-excursion
-        (while (and (puni--backward-same-syntax)
+        (while (and (puni--backward-same-syntax to)
                     (funcall probe)
                     (setq pos (point))
                     (> (point) to))))
@@ -559,6 +616,7 @@ symbol delimiters differently."
         (while (< (point) end)
           (if (or (unless strict (puni--forward-atom end))
                   (puni--forward-blanks end)
+                  (puni--forward-string)
                   (puni-strict-forward-sexp))
               (when (eq (point) end)
                 (cl-return t))
