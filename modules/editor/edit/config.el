@@ -328,16 +328,25 @@ See the docstring of `replace-string' for details."
 
 ;; TODO: grep integration
 
-;;; Structural editing
+;; TODO: grep integration
 
 ;; TODO: more ideas on structural editing; evil-matchit, embrace
 
-;; toki-editing offers fine and structural editing commands
+(use-package puni
+  :straight nil
+  :hook (after-init . puni-global-mode)
+  :config
+  (defun toki/disable-puni-mode ()
+    "Disable puni mode."
+    (puni-mode -1))
+  ;; We want keys like C-k, M-DEL to be handled by the shell program.
+  (add-hook 'term-mode-hook #'toki/disable-puni-mode))
+
+;; We don't map soft delete commands defined in toki-editing for now, to test
+;; puni in daily use.
 (use-package toki-editing
   :straight nil
-  :trigger after-init-hook
-  :config
-  (toki-global-sedit-mode))
+  :defer t)
 
 (use-package elec-pair
   :straight nil

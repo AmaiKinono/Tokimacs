@@ -23,12 +23,5 @@
     :keymaps 'toki-term-browse-mode-map
     "c" '(term-char-mode :wk "Char Mode")))
 
-(defun toki/disable-sedit-mode ()
-  "Disable sedit mode."
-  (toki-sedit-mode -1))
-
-;; We want keys like C-k, M-DEL to be handled by the shell program.
-(add-hook 'term-mode-hook #'toki/disable-sedit-mode)
-
 (toki-app-def
   "t" '(toki-term :wk "Terminal"))
