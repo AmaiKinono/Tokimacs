@@ -242,7 +242,8 @@ This is used in the path info."
 
 ;; NOTE: This doesn't deal with miniframes.
 (defun toki-modeline/update-selected-window (frame)
-  (setq toki-modeline/selected-window (frame-selected-window frame)))
+  (unless (minibufferp)
+    (setq toki-modeline/selected-window (frame-selected-window frame))))
 
 (defvar-local toki-modeline/cache (make-hash-table :test #'eq))
 
