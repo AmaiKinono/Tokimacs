@@ -336,6 +336,7 @@ See the docstring of `replace-string' for details."
   :straight nil
   :hook (after-init . puni-global-mode)
   :config
+  (toki/setq puni--debug t)
   (defun toki/disable-puni-mode ()
     "Disable puni mode."
     (puni-mode -1))
