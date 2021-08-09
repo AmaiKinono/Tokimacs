@@ -140,15 +140,16 @@ of `char-syntax'."
   (when-let (syntax (puni--syntax-char-after (1- (point))))
     (puni--backward-syntax (char-to-string syntax) bound)))
 
-;;;;; Basic move: atom
+;;;;; Basic move: symbol
 
-(defun puni--forward-atom (&optional bound)
-  "Move forward an atom if there's one in front.
-An atom is a symbol, allowing escaped non-symbol chars in it, and
-an expression prefixe before it.
+(defun puni--forward-symbol (&optional bound)
+  "Move forward an symbol if there's one in front.
+A symbol is a symbol in Emacs convention, allowing escaped chars
+with symbol syntax in it, plus an expression prefix before it (if
+exist).
 
 If BOUND is non-nil, stop before BOUND."
-  ;; It may be a good idea to treat a series of punctuations as an atom (think
+  ;; It may be a good idea to treat a series of punctuations as a symbol (think
   ;; of operators).  Unfortunately there are major modes where "<>" should be
   ;; delimiters, but are given the punctuation syntax.
   (puni--error-if-before-point bound)
@@ -163,8 +164,8 @@ If BOUND is non-nil, stop before BOUND."
       (unless (eq from to)
         to))))
 
-(defun puni--backward-atom (&optional bound)
-  "Backward version of `puni--forward-atom'."
+(defun puni--backward-symbol (&optional bound)
+  "Backward version of `puni--forward-symbol'."
   (puni--error-if-after-point bound)
   (let ((from (point)))
     ;; In case we start after an escape char.
@@ -179,12 +180,12 @@ If BOUND is non-nil, stop before BOUND."
       (unless (eq from to)
         to))))
 
-(defun puni--in-atom-p (beg end)
-  "Return t if the region between BEG and END is in one atom.
-See `puni--forward-atom' to know what's an atom."
+(defun puni--in-symbol-p (beg end)
+  "Return t if the region between BEG and END is in one symbol.
+See `puni--forward-symbol' to know what's a symbol."
   (save-excursion
     (goto-char beg)
-    (eq (puni--forward-atom end) end)))
+    (eq (puni--forward-symbol end) end)))
 
 ;;;;; Basic move: string
 
@@ -374,14 +375,14 @@ if DIRECTION is `forward', check if the char after PT is inside
 any of the delimiters, or if DIRECTION is `backward', check the
 char before PT instead."
   (unless (< beg pt end) (error "PT is not between BEG and END"))
-  ;; Assume a string can't be a delimiter. We also assume an atom can't be a
+  ;; Assume a string can't be a delimiter. We also assume a symbol can't be a
   ;; delimiter.  This is not true, but many major modes thinks "a = b" is a
   ;; sexp, where it's actually safe to delete a or b.  In this situation, it's
   ;; the "bound of symbol" being the delimiter, not the symbol itself.
   (unless (or (save-excursion (goto-char beg) (or (puni--forward-string)
-                                                  (puni--forward-atom)))
+                                                  (puni--forward-symbol)))
               (save-excursion (goto-char end) (or (puni--backward-string)
-                                                  (puni--backward-atom))))
+                                                  (puni--backward-symbol))))
     (pcase direction
       ('forward (or (puni--pair-or-in-delim-p beg (1+ pt))
                     (puni--pair-or-in-delim-p pt end)))
@@ -436,7 +437,7 @@ works on these situations."
        ((> beg-of-maybe-another-sexp beg)
         (setq end (save-excursion
                     (goto-char beg)
-                    (or (puni--forward-atom)
+                    (or (puni--forward-symbol)
                         (puni--forward-string)
                         (puni--forward-same-syntax)))))
        ((not (eq end end-of-maybe-another-sexp))
@@ -448,7 +449,7 @@ works on these situations."
        ((< beg-of-maybe-another-sexp beg)
         (if (puni--inside-delim-p beg beg-of-maybe-another-sexp end 'forward)
             (setq end nil)
-          (setq end (save-excursion (or (puni--forward-atom)
+          (setq end (save-excursion (or (puni--forward-symbol)
                                         (puni--forward-string)
                                         (puni--forward-same-syntax))))))
        ;; The implicit branch here is (= beg-of-maybe-another-sexp beg).  We
@@ -471,7 +472,7 @@ works on these situations."
        ((< end-of-maybe-another-sexp end)
         (setq beg (save-excursion
                     (goto-char end)
-                    (or (puni--backward-atom)
+                    (or (puni--backward-symbol)
                         (puni--backward-string)
                         (puni--backward-same-syntax)))))
        ((not (eq beg beg-of-maybe-another-sexp))
@@ -480,7 +481,7 @@ works on these situations."
        ((> end-of-maybe-another-sexp end)
         (if (puni--inside-delim-p end beg end-of-maybe-another-sexp 'backward)
             (setq beg nil)
-          (setq beg (save-excursion (or (puni--backward-atom)
+          (setq beg (save-excursion (or (puni--backward-symbol)
                                         (puni--backward-string)
                                         (puni--backward-same-syntax)))))))
       (when beg (goto-char beg)))))
@@ -604,7 +605,7 @@ symbol delimiters differently."
             (end (max pt1 pt2)))
         (goto-char beg)
         (while (< (point) end)
-          (if (or (unless strict (puni--forward-atom end))
+          (if (or (unless strict (puni--forward-symbol end))
                   (puni--forward-blanks end)
                   (puni--forward-string)
                   (puni-strict-forward-sexp))
@@ -612,10 +613,10 @@ symbol delimiters differently."
                 (cl-return t))
             (cl-return nil)))
         ;; Now we have (> (point) end).  This means END is in a sexp.  If END
-        ;; is in an atom, we can still delete the part of this atom before END,
-        ;; resulting a balanced state, so we check if this is true.  Notice the
-        ;; (= (point) end) situation causes return in the above code, so we
-        ;; don't need to handle it.
+        ;; is in a symbol, we can still delete the part of this symbol before
+        ;; END, resulting a balanced state, so we check if this is true.
+        ;; Notice the (= (point) end) situation causes return in the above
+        ;; code, so we don't need to handle it.
         (let ((goal (point)))
           (goto-char end)
           (if (and (puni-strict-forward-sexp)
@@ -688,14 +689,14 @@ action after failure.  It can be:
   (setq style (or style 'precise))
   (unless (eq from to)
     (let* ((forward (< from to))
-           (move-atom (if forward #'puni--forward-atom #'puni--backward-atom))
+           (move-symbol (if forward #'puni--forward-symbol #'puni--backward-symbol))
            (move-blanks (if forward
                             #'puni--forward-blanks #'puni--backward-blanks))
            (move-sexp (if forward
                           #'puni-strict-forward-sexp #'puni-strict-backward-sexp))
            (move (lambda ()
                    (or (unless strict-sexp
-                         (funcall move-atom
+                         (funcall move-symbol
                                   (when (eq style 'precise) to)))
                        (funcall move-blanks to)
                        (funcall move-sexp))))
