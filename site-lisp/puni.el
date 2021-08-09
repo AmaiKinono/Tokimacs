@@ -244,13 +244,9 @@ comment is newline, this goes to the point before the newline."
 (defun puni--backward-comment-block ()
   "Jump backward a whole comment block.
 Return the point if success."
-  (let ((from (point))
-        to)
-    (save-excursion
-      (when (forward-comment -1)
-        (puni--forward-blanks)
-        (setq to (point))))
-    (when to (goto-char to))))
+  (when (forward-comment -1)
+    (puni--forward-blanks)
+    (point)))
 
 ;;;;; Basic move: single line comment
 
