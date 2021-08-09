@@ -136,10 +136,14 @@ This is used in the path info."
 
 (defun toki-modeline-location ()
   "Return the location info."
-  (let ((s (format-mode-line "%l:%c %p")))
-    (when (string-match (rx (or line-start (not "%")) "%" line-end) s)
-      (setq s (concat s "%%%")))
-    s))
+  (let ((percent (format-mode-line "%p")))
+    (setq percent
+          (pcase percent
+            ("All" "All%")
+            ("Top" "0%")
+            ("Bottom" "100%")
+            (val val)))
+    (concat (format-mode-line "%l:%c") " " percent "%%%")))
 
 (defun toki-modeline-path ()
   "Return the path info."
