@@ -82,14 +82,13 @@ see the package `toki-term'."
                    (getenv "SHELL") shell-file-name
                    (read-file-name "Shell executable: " "/" nil t)))
          (dir (or dir (funcall toki-term-project-root-function) default-directory))
-         (default-dir (file-truename default-directory))
          target)
     (setq dir (file-truename dir))
     (unless (derived-mode-p 'term-mode)
       (cl-dolist (buf (buffer-list))
         (with-current-buffer buf
           (when (and (derived-mode-p 'term-mode)
-                     (equal default-dir dir)
+                     (equal (file-truename default-directory) dir)
                      ;; Make sure the term isn't running any program.
                      (not (process-running-child-p (get-buffer-process buf))))
             (setq target buf)
