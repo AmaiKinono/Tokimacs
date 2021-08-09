@@ -299,11 +299,10 @@ This is used in the path info."
         format
       (mapcar (lambda (s) (propertize s 'face nil)) format))))
 
-(defun toki-modeline-setup ()
+(defun toki-modeline-setup-hooks ()
   (add-hook 'window-selection-change-functions
             #'toki-modeline/update-selected-window)
-  (toki-modeline/update-selected-window (selected-frame))
-  (setq-default mode-line-format '(:eval (toki-modeline-compute))))
+  (toki-modeline/update-selected-window (selected-frame)))
 
 (provide 'toki-modeline)
 
