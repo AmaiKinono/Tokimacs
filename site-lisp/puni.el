@@ -201,11 +201,11 @@ See `puni--forward-atom' to know what's an atom."
 (defun puni--forward-string ()
   "Move forward a string.
 Return the point if success, otherwise return nil."
-  (let ((from (point)))
+  (let ((from (point))
+        to)
     (save-excursion
-      (puni--forward-syntax "\\")
-      (puni--forward-syntax "\"")
-      (when (and (not (eq from (point)))
+      (when (and (progn (puni--forward-syntax "\\")
+                        (puni--forward-syntax "\""))
                  (puni--in-string-p))
         ;; The default `forward-sexp' could jump over a string.
         ;; `forward-sexp-function' from the major-mode sometimes doesn't, when
@@ -213,24 +213,24 @@ Return the point if success, otherwise return nil."
         (let ((forward-sexp-function nil))
           (goto-char from)
           (forward-sexp))
-        (let ((to (point)))
-          (when (not (eq from to))
-            (goto-char to)))))))
+        (setq to (point))))
+    (when (and to (not (eq from to)))
+      (goto-char to))))
 
 (defun puni--backward-string ()
   "Backward version of `puni--forward-string'."
-  (let ((from (point)))
+  (let ((from (point))
+        to)
     (save-excursion
-      (puni--backward-syntax "\"")
-      (puni--backward-syntax "\\")
-      (when (and (not (eq from (point)))
+      (when (and (puni--backward-syntax "\"")
+                 (progn (puni--backward-syntax "\\") t)
                  (puni--in-string-p))
         (let ((forward-sexp-function nil))
           (goto-char from)
           (forward-sexp -1))
-        (let ((to (point)))
-          (when (not (eq from to))
-            (goto-char to)))))))
+        (setq to (point))))
+    (when (and to (not (eq from to)))
+      (goto-char to))))
 
 ;;;;; Basic move: comment
 
