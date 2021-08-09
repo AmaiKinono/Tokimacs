@@ -355,12 +355,12 @@ See the docstring of `toki-fontset-font-list' for details."
   (toki-modeline-setup))
 
 (defun toki/modeline-refresh-face ()
-  ;; NOTE: I can't set the height...
   (let ((bg (face-attribute 'default :background)))
     (set-face-attribute 'mode-line nil
-                        :background bg)
+                        :background bg :height 0.9)
     (set-face-attribute 'mode-line-inactive nil
-                        :background bg :inherit 'shadow)))
+                        :background bg :height 0.9
+                        :bold t :inherit 'shadow)))
 
 (add-hook 'toki-after-load-theme-hook #'toki/modeline-refresh-face)
 

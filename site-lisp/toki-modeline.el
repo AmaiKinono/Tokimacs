@@ -117,18 +117,19 @@ This is used in the path info."
   (setq string (replace-regexp-in-string "%%" "%" string))
   (setq string (propertize string 'face 'mode-line))
   (let ((len (string-width string)))
-    (let ((height (face-attribute 'mode-line :height))
-          ratio)
-      (cond
-       ((floatp height)
-        (setq ratio height))
-       ((integerp height)
-        (setq ratio (/ (float ratio)
-                       (face-attribute 'default :height))))
-       ;; HEIGHT can also be a function, for now I don't deal with it.
-       )
-      (when ratio (setq len (* len ratio))))
-    (unless (display-graphic-p) (setq len (1+ len)))
+    (if (display-graphic-p)
+        (let ((height (face-attribute 'mode-line :height))
+              ratio)
+          (cond
+           ((floatp height)
+            (setq ratio height))
+           ((integerp height)
+            (setq ratio (/ (float ratio)
+                           (face-attribute 'default :height))))
+           ;; HEIGHT can also be a function, for now I don't deal with it.
+           )
+          (when ratio (setq len (ceiling (* len ratio)))))
+      (setq len (1+ len)))
     (propertize " " 'display `((space :align-to (- right ,len))))))
 
 ;;;; Info functions
@@ -231,13 +232,19 @@ This is used in the path info."
      week
      (format-time-string " %H:%M]"))))
 
-;;;; Modeline formats
+;;;; Internals
 
 (defvar toki-modeline/selected-window nil)
 
 ;; NOTE: This doesn't deal with miniframes.
 (defun toki-modeline/update-selected-window (frame)
   (setq toki-modeline/selected-window (frame-selected-window frame)))
+
+(defvar-local toki-modeline/cache (make-hash-table :test #'eq))
+
+(defvar toki-modeline/last-update nil)
+
+;;;; Modeline formats
 
 (defvar toki-modeline-main-format
   (list
@@ -250,27 +257,25 @@ This is used in the path info."
    '(:eval (toki-modeline-pad
             (propertize mode-name 'face 'toki-modeline-mode-face)))
    '(:eval (propertize (toki-modeline-evil) 'face 'toki-modeline-evil-face)))
-  "A minimal modeline format that shows essential info.")
+  "Modeline format for active window.")
 
 (defvar toki-modeline-left-format
   (when (bound-and-true-p winum-mode)
     (list '(:eval (propertize (concat " #" (format "%s" (winum-get-number)))
                               'face 'toki-modeline-winum-face))))
-  "A minimal modeline format for displaying in the left.")
+  "Modeline format for displaying in the left.")
 
+;; NOTE: Currently unused.
 (defvar toki-modeline-additional-format
   (list
    '(:eval (toki-modeline-pad
             (toki-modeline-battery)))
    '(:eval (propertize (toki-modeline-time) 'face 'toki-modeline-time-face)))
-  "A modeline format showing battery and time info.")
-
-(defvar-local toki-modeline/cache (make-hash-table :test #'eq))
-
-(defvar toki-modeline/last-update nil)
+  "Modeline format showing battery and time info.")
 
 (defun toki-modeline-compute (&optional force)
-  (let (format)
+  (let ((format)
+        (active-window-p (eq (selected-window) toki-modeline/selected-window)))
     (setq format
           (if (or force
                   (null toki-modeline-update-interval)
@@ -285,10 +290,9 @@ This is used in the path info."
                 (setq toki-modeline/last-update (current-time))
                 format)
             (gethash (selected-window) toki-modeline/cache)))
-    (if (eq (selected-window) toki-modeline/selected-window)
+    (if active-window-p
         format
-      (mapcar (lambda (s) (propertize s 'face 'mode-line-inactive))
-              format))))
+      (mapcar (lambda (s) (propertize s 'face nil)) format))))
 
 (defun toki-modeline-setup ()
   (add-hook 'window-selection-change-functions
