@@ -52,6 +52,10 @@
 
 (toki/setq js-indent-level 2)
 
+;;; Yaml
+
+(use-package yaml-mode)
+
 ;;; Keybinds
 
 (toki-elisp-def
