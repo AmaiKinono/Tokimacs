@@ -227,15 +227,16 @@ Return the point if success, otherwise return nil."
 
 (defun puni--forward-comment-block ()
   "Jump forward a whole comment block.
-Return the point if success."
-  (let (to)
+Return the point if success.  When the closing delimiter of the
+comment is newline, this goes to the point before the newline."
+  (let ((from (point))
+        to)
     (save-excursion
-      (when (or (when (eq (puni--syntax-char-after) ?<)
-                  ;; When we are before a single line comment at the end of the
-                  ;; file, and there's no trailing newline, `forward-comment'
-                  ;; does its work but returns nil.
-                  (forward-comment 1) t)
-                (forward-comment 1))
+      ;; `forward-comment' could do its work but return nil, e.g., when we are
+      ;; before a single line comment at the end of the file, and there's no
+      ;; trailing newline.
+      (when (progn (forward-comment 1)
+                   (not (eq (point) from)))
         (puni--backward-blanks)
         (setq to (point))))
     (when to (goto-char to))))
@@ -246,14 +247,8 @@ Return the point if success."
   (let ((from (point))
         to)
     (save-excursion
-      ;; Sometimes it looks like the point is at the end of comment, but
-      ;; actually not, e.g., there are spaces after point, or a newline follows
-      ;; the point, which is the end delimiter of comment itself.  In these
-      ;; situations, we jump over blanks to put the point after the comment
-      ;; block.
-      (puni--forward-blanks)
       (when (forward-comment -1)
-        (puni--forward-blanks from)
+        (puni--forward-blanks)
         (setq to (point))))
     (when to (goto-char to))))
 
@@ -263,20 +258,25 @@ Return the point if success."
 ;; interactive `puni-forward/backward-sexp' commands.
 
 (defun puni--begin-of-single-line-comment-p ()
-  "Return t if point is at the opening delimiter of a single line comment."
+  "Return t if point is at the opening delimiter of a single line comment.
+Doesn't work on a single-line comment at the end of buffer, and
+there's no trailing newline."
   (save-excursion
-    (and (eq (puni--syntax-char-after) ?<)
-         (progn (forward-comment 1)
-                (or (eobp) (eq (char-before) ?\n))))))
+    (and (not (puni--forward-blanks))
+         ;; We don't use `puni--forward-comment-block' here, see its docstring.
+         (let ((from (point)))
+           (forward-comment 1)
+           (not (eq from (point))))
+         (eq (char-before) ?\n))))
 
 (defun puni--end-of-single-line-comment-p ()
   "Return t if point is after the end delimiter of a single line comment.
-The end delimiter is a newline.
-
-This doesn't work for single line comment at the end of file
-without a trailing newline."
+The end delimiter of such a comment is a newline, so this means
+the point is at the beginning of next line (or next n lines, if
+next n-1 lines are empty)."
   (and (eq (puni--syntax-char-after (1- (point))) ?>)
-       (eq (char-before) ?\n)))
+       (eq (char-before) ?\n)
+       (save-excursion (forward-comment -1))))
 
 (defun puni--forward-consecutive-single-line-comments ()
   "Jump forward a series of single-line comments.
@@ -294,23 +294,19 @@ Return the point if success."
         (setq to (point))))
     (when to (goto-char to))))
 
-;; TODO: I found this not easy to use...
 (defun puni--backward-consecutive-single-line-comments ()
   "Jump backward a series of single-line comments.
 Return the point if success."
   (let ((from (point))
         to)
     (save-excursion
-      (while (and (progn (puni--forward-syntax " ")
-                         (when (eq (char-after) ?\n)
-                           (forward-char))
+      (while (and (puni--end-of-single-line-comment-p)
+                  (forward-comment -1)
+                  (progn (puni--backward-syntax " ")
                          (puni--end-of-single-line-comment-p))
-                  (when (forward-comment -1)
-                    (puni--backward-syntax " ")
-                    (and (bolp)
-                         (unless (bobp)
-                           (forward-char -1)
-                           (not (puni--line-empty-p)))))))
+                  (not (bobp))
+                  (save-excursion (forward-line -1)
+                                  (puni--begin-of-single-line-comment-p))))
       (unless (>= (point) from)
         (puni--forward-blanks from)
         (setq to (point))))
@@ -559,32 +555,49 @@ considered as in the comment."
 
 ;;;;; API: Strict forward/backward sexp functions
 
-(defun puni-strict-forward-sexp ()
+(defun puni-strict-forward-sexp (&optional skip-single-line-comments)
   "Move strict forward a sexp, including a whole comment block.
-Return the point if success, otherwise return nil."
+Return the point if success, otherwise return nil.
+
+If SKIP-SINGLE-LINE-COMMENTS is non-nil, consider a series of
+consecutive single-line comments as a comment block.  Otherwise
+move one comment line a time."
   (let ((from (point)))
     (puni--forward-blanks)
-    (or (puni--forward-comment-block)
-        (cond
-         ;; `puni--in-comment-p' doesn't consert a point inside the
-         ;; (multichar) comment quote as in the comment, but this is fine as
-         ;; when a user is deleting things with the point at there, they
-         ;; probably want to break the balanced comment quotes.
-         ((puni--in-comment-p) (puni-strict-forward-sexp-in-comment))
-         ((puni--in-string-p) (puni-strict-forward-sexp-in-string))
-         (t (puni--strict-primitive-forward-sexp))))
+    (cond
+     ;; `puni--in-comment-p' doesn't consert a point inside the
+     ;; (multichar) comment quote as in the comment, but this is fine as
+     ;; when a user is deleting things with the point at there, they
+     ;; probably want to break the balanced comment quotes.
+     ((puni--in-comment-p) (puni-strict-forward-sexp-in-comment))
+     ((puni--in-string-p) (puni-strict-forward-sexp-in-string))
+     (t (or (when skip-single-line-comments
+              (puni--forward-consecutive-single-line-comments))
+            (puni--forward-comment-block)
+            (puni--strict-primitive-forward-sexp))))
     (let ((to (point)))
       (unless (eq from to) to))))
 
-(defun puni-strict-backward-sexp ()
+(defun puni-strict-backward-sexp (&optional skip-single-line-comments)
   "Backward version of `puni-strict-forward-sexp'."
   (let ((from (point)))
-    (puni--backward-blanks)
-    (or (puni--backward-comment-block)
-        (cond
-         ((puni--in-comment-p) (puni-strict-backward-sexp-in-comment))
-         ((puni--in-string-p) (puni-strict-backward-sexp-in-string))
-         (t (puni--strict-primitive-backward-sexp))))
+    ;; If we `puni--backward-blanks' first, we can't tell if the point is after
+    ;; the end of a single line comment, as it takes us before the ending
+    ;; newline char of the comment, which is the closing comment delimiter.
+    (if (progn
+          (puni--backward-syntax " ")
+          (puni--end-of-single-line-comment-p))
+        (if skip-single-line-comments
+            (puni--backward-consecutive-single-line-comments)
+          (puni--backward-comment-block))
+      (puni--backward-blanks)
+      (cond
+       ((puni--in-comment-p) (puni-strict-backward-sexp-in-comment))
+       ((puni--in-string-p) (puni-strict-backward-sexp-in-string))
+       (t (or (when skip-single-line-comments
+                (puni--backward-consecutive-single-line-comments))
+              (puni--backward-comment-block)
+              (puni--strict-primitive-backward-sexp)))))
     (let ((to (point)))
       (unless (eq from to) to))))
 
@@ -866,12 +879,7 @@ Continue? "))
 This is the same as `puni-strict-forward-sexp', except that it
 jumps forward consecutive single-line comments."
   (interactive)
-  (let ((from (point)))
-    (puni--forward-blanks)
-    (or (puni--forward-consecutive-single-line-comments)
-        (puni-strict-forward-sexp))
-    (let ((to (point)))
-      (unless (eq from to) to))))
+  (puni-strict-forward-sexp 'skip-single-line-comments))
 
 ;;;###autoload
 (defun puni-backward-sexp ()
@@ -879,12 +887,7 @@ jumps forward consecutive single-line comments."
 This is the same as `puni-strict-backward-sexp', except that it
 jumps backward consecutive single-line comments."
   (interactive)
-  (let ((from (point)))
-    (puni--backward-blanks)
-    (or (puni--backward-consecutive-single-line-comments)
-        (puni-strict-backward-sexp))
-    (let ((to (point)))
-      (unless (eq from to) to))))
+  (puni-strict-backward-sexp 'skip-single-line-comments))
 
 ;;;###autoload
 (defun puni-beginning-of-sexp ()
