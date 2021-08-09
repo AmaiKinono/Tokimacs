@@ -132,23 +132,13 @@ before BOUND.
 This is more robust than `forward-same-syntax' because it takes
 `syntax-table' text properties into account.  See the docstring
 of `char-syntax'."
-  (puni--error-if-before-point bound)
-  (unless (eobp)
-    (skip-syntax-forward
-     (char-to-string (puni--syntax-char-after (point))))
-    (if (and bound (> (point) bound))
-        (goto-char bound)
-      (point))))
+  (when-let ((syntax (puni--syntax-char-after)))
+    (puni--forward-syntax (char-to-string syntax) bound)))
 
 (defun puni--backward-same-syntax (&optional bound)
   "Backward version of `puni--forward-same-syntax'."
-  (puni--error-if-after-point bound)
-  (unless (bobp)
-    (skip-syntax-backward
-     (char-to-string (puni--syntax-char-after (1- (point)))))
-    (if (and bound (< (point) bound))
-        (goto-char bound)
-      (point))))
+  (when-let (syntax (puni--syntax-char-after (1- (point))))
+    (puni--backward-syntax (char-to-string syntax) bound)))
 
 ;;;;; Basic move: atom
 
