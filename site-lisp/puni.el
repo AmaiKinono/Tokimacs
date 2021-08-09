@@ -18,6 +18,9 @@
 
 ;;;; Internals
 
+(defvar puni--debug nil
+  "Turn on debug mode when non-nil.")
+
 ;;;;; Probes
 
 (defun puni--line-empty-p ()
@@ -313,6 +316,19 @@ Return the point if success."
 ;; In this section, we build necessary components for the final
 ;; `puni--strict-forward/backward-sexp' functions.
 
+(defun puni--forward-syntax-block ()
+  "Move forward a symbol, string or chars with the same syntax.
+Return the point if success, otherwise return nil."
+  (or (puni--forward-symbol)
+      (puni--forward-string)
+      (puni--forward-same-syntax)))
+
+(defun puni--backward-syntax-block ()
+  "Backward version of `puni--forward-syntax-block'."
+  (or (puni--backward-symbol)
+      (puni--backward-string)
+      (puni--backward-same-syntax)))
+
 (defun puni--primitive-forward-sexp (&optional n)
   "A wrapper around `forward-sexp'.
 Move forward N sexp, return the point if success, otherwise
@@ -397,7 +413,29 @@ opening quote of the next one, forms a string.  It also doesn't
 work well for balanced comment blocks.  So we'll build on top of
 this function until we have `puni-strict-forward-sexp', which
 works on these situations."
-  (let (beg end beg-of-maybe-another-sexp end-of-maybe-another-sexp)
+  (let* (beg end beg-of-maybe-another-sexp end-of-maybe-another-sexp
+             (unhandled-branch-handler
+              (lambda ()
+                (if puni--debug
+                    (error (format "You've found an unhandled branch in Puni.
+Direction: forward
+beg: %s, end: %s, another-beg: %s, another-end: %s
+Please report relevant part of the buffer, with the location of these points."
+                                   beg end
+                                   beg-of-maybe-another-sexp
+                                   end-of-maybe-another-sexp))
+                  (setq end nil))))
+             (skipped-part-handler
+              (lambda ()
+                (setq end (save-excursion
+                            (goto-char beg)
+                            (puni--forward-syntax-block)))))
+             (inside-sexp-handler
+              (lambda ()
+                (if (puni--inside-delim-p beg beg-of-maybe-another-sexp end
+                                          'forward)
+                    (setq end nil)
+                  (setq end (save-excursion (puni--forward-syntax-block)))))))
     (save-excursion
       (setq beg (point))
       (setq end (puni--primitive-forward-sexp))
@@ -409,51 +447,66 @@ works on these situations."
     ;; we are using a `forward-sexp-function' that really doesn't work.
     (when (and beg end beg-of-maybe-another-sexp end-of-maybe-another-sexp)
       (cond
-       ;; Logically, this shouldn't happen.  In reality, the only situation
-       ;; I've found is the default sexp don't work with punctuations well.
-       ;; Try this:
-       ;;
-       ;;     foo|. bar        (forward and backward sexp)
-       ;;
-       ;; Or this:
-       ;;
-       ;;     foo bar|.        (forward -> backward -> forward sexp)
-       ;;
-       ;; The punctuations are skipped over while finding the next sexp.
-       ;; When this happens, we think the next syntax block that's skipped
-       ;; over is a balanced expression.
-       ;;
-       ;; NOTE: another situation:
-       ;;
-       ;;     <p|></p>
-       ((> beg-of-maybe-another-sexp beg)
-        (setq end (save-excursion
-                    (goto-char beg)
-                    (or (puni--forward-symbol)
-                        (puni--forward-string)
-                        (puni--forward-same-syntax)))))
-       ((not (eq end end-of-maybe-another-sexp))
-        (when (puni--inside-delim-p beg beg-of-maybe-another-sexp end 'forward)
-          (setq end nil)))
-       ;; If we didn't fall into the last branch, that means BEG is inside
-       ;; another bigger sexp, and `forward-sexp' knows the bounds of that
-       ;; bigger sexp.
        ((< beg-of-maybe-another-sexp beg)
-        (if (puni--inside-delim-p beg beg-of-maybe-another-sexp end 'forward)
-            (setq end nil)
-          (setq end (save-excursion (or (puni--forward-symbol)
-                                        (puni--forward-string)
-                                        (puni--forward-same-syntax))))))
-       ;; The implicit branch here is (= beg-of-maybe-another-sexp beg).  We
-       ;; don't need to do anything as this means BEG and END forms a
-       ;; balanced expression.
-       )
+        (cond
+         ;; Try:
+         ;;
+         ;;     foo bar |.        (forward -> backward -> forward sexp)
+         ;;
+         ;; The cause is "." is completely ignored when searching for the bound
+         ;; of a sexp.  This is seen more clear when there are other words and
+         ;; puncts after ".".  If this happens, we consider the syntax block at
+         ;; the beginning of the ignored part a sexp.
+         ((<= end-of-maybe-another-sexp beg)
+          (funcall skipped-part-handler))
+         ;; Shouldn't happen.
+         ((< beg end-of-maybe-another-sexp end)
+          (funcall unhandled-branch-handler))
+         ;; This means the part between beg-of-maybe-another-sexp and end is a
+         ;; sexp.  e.g.:
+         ;;
+         ;;     <p|>something</p>
+         ;;
+         ;; or
+         ;;
+         ;;     <p>something|</p>
+         ((>= end-of-maybe-another-sexp end)
+          (funcall inside-sexp-handler))))
+       ;; This means there's a sexp between BEG and END.  That's perfect, we
+       ;; don't need to do anything more.
+       ((eq beg-of-maybe-another-sexp beg) nil)
+       ;; (> beg-of-maybe-another-sexp beg).  e.g.,
+       ;;
+       ;;     bar|. foo
+       (t
+        (funcall skipped-part-handler)))
       (when end (goto-char end)))))
 
-;; TODO: fix this according to the forward version.
 (defun puni--strict-primitive-backward-sexp ()
   "Backward version of `puni--strict-primitive-forward-sexp'."
-  (let (beg end beg-of-maybe-another-sexp end-of-maybe-another-sexp)
+  (let* (beg end beg-of-maybe-another-sexp end-of-maybe-another-sexp
+             (unhandled-branch-handler
+              (lambda ()
+                (if puni--debug
+                    (error (format "You've found an unhandled branch in Puni.
+Direction: backward
+beg: %s, end: %s, another-beg: %s, another-end: %s
+Please report relevant part of the buffer, with the location of these points."
+                                   beg end
+                                   beg-of-maybe-another-sexp
+                                   end-of-maybe-another-sexp))
+                  (setq beg nil))))
+             (skipped-part-handler
+              (lambda ()
+                (setq beg (save-excursion
+                            (goto-char end)
+                            (puni--backward-syntax-block)))))
+             (inside-sexp-handler
+              (lambda ()
+                (if (puni--inside-delim-p end beg end-of-maybe-another-sexp
+                                          'backward)
+                    (setq beg nil)
+                  (setq beg (save-excursion (puni--backward-syntax-block)))))))
     (save-excursion
       (setq end (point))
       (setq beg (puni--primitive-forward-sexp -1))
@@ -461,21 +514,17 @@ works on these situations."
       (setq beg-of-maybe-another-sexp (puni--primitive-forward-sexp -1)))
     (when (and beg end beg-of-maybe-another-sexp end-of-maybe-another-sexp)
       (cond
-       ((< end-of-maybe-another-sexp end)
-        (setq beg (save-excursion
-                    (goto-char end)
-                    (or (puni--backward-symbol)
-                        (puni--backward-string)
-                        (puni--backward-same-syntax)))))
-       ((not (eq beg beg-of-maybe-another-sexp))
-        (when (puni--inside-delim-p end beg end-of-maybe-another-sexp 'backward)
-          (setq beg nil)))
        ((> end-of-maybe-another-sexp end)
-        (if (puni--inside-delim-p end beg end-of-maybe-another-sexp 'backward)
-            (setq beg nil)
-          (setq beg (save-excursion (or (puni--backward-symbol)
-                                        (puni--backward-string)
-                                        (puni--backward-same-syntax)))))))
+        (cond
+         ((>= beg-of-maybe-another-sexp end)
+          (funcall skipped-part-handler))
+         ((> end beg-of-maybe-another-sexp beg)
+          (funcall unhandled-branch-handler))
+         ((<= beg-of-maybe-another-sexp end)
+          (funcall inside-sexp-handler))))
+       ((eq end-of-maybe-another-sexp end) nil)
+       (t
+        (funcall skipped-part-handler)))
       (when beg (goto-char beg)))))
 
 (defun puni--strict-primitive-forward-sexp-in-thing (probe thing)
@@ -611,9 +660,11 @@ symbol delimiters differently."
       (cl-return t))
     (save-excursion
       (let ((beg (min pt1 pt2))
-            (end (max pt1 pt2)))
+            (end (max pt1 pt2))
+            bound-before-end)
         (goto-char beg)
         (while (< (point) end)
+          (setq bound-before-end (point))
           (if (or (unless strict (puni--forward-symbol end))
                   (puni--forward-blanks end)
                   (puni--forward-string)
@@ -621,17 +672,15 @@ symbol delimiters differently."
               (when (eq (point) end)
                 (cl-return t))
             (cl-return nil)))
-        ;; Now we have (> (point) end).  This means END is in a sexp.  If END
-        ;; is in a symbol, we can still delete the part of this symbol before
-        ;; END, resulting a balanced state, so we check if this is true.
-        ;; Notice the (= (point) end) situation causes return in the above
-        ;; code, so we don't need to handle it.
-        (let ((goal (point)))
-          (goto-char end)
-          (if (and (puni-strict-forward-sexp)
-                   (eq (point) goal))
-              (cl-return t)
-            (cl-return nil)))))))
+        ;; Now we have (> (point) end).  This means END is in a sexp.  If the
+        ;; part between BOUND-BEFORE-END and END is balanced, we can still
+        ;; delete it.  Notice the (= (point) end) situation causes return in
+        ;; the above code, so we don't need to handle it.
+        (goto-char end)
+        (if (and (puni-strict-backward-sexp)
+                 (eq (point) bound-before-end))
+            (cl-return t)
+          (cl-return nil))))))
 
 ;;;;; API: Deletion
 
