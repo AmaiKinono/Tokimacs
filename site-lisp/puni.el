@@ -145,6 +145,27 @@ of `char-syntax'."
 
 ;;;;; Basic move: symbol
 
+(defun puni--symbol-syntax-p (&optional point)
+  "Check if char at POINT has symbol or word syntax.
+This includes the situation where it's a char with \"escape\"
+syntax (like backslash), but followed by a char with symbol or
+word syntax."
+  (let ((point (or point (point))))
+    (or (memq (puni--syntax-char-after point) '(?_ ?w))
+        (and (eq (puni--syntax-char-after point) '\\)
+             (memq (puni--syntax-char-after (1+ point)) '(?_ ?w))))))
+
+(defun puni--symbol-prefix-p (&optional point)
+  "Check if char at POINT is a symbol prefix.
+This means it's a char with \"'\" syntax, and the point after it
+satisfies `puni--symbol-syntax-p'."
+  (let ((point (or point (point))))
+    (save-excursion
+      (goto-char point)
+      ;; In case ther are multiple prefixes... Could that be a case?
+      (and (puni--forward-syntax "'")
+           (puni--symbol-syntax-p)))))
+
 (defun puni--forward-symbol (&optional bound)
   "Move forward an symbol if there's one in front.
 A symbol is a symbol in Emacs convention, allowing escaped chars
@@ -157,12 +178,10 @@ If BOUND is non-nil, stop before BOUND."
   ;; delimiters, but are given the punctuation syntax.
   (puni--error-if-before-point bound)
   (let ((from (point)))
-    (puni--forward-syntax "'" bound)
-    (while (or (puni--forward-syntax "_w" bound)
-               (when (eq (puni--syntax-char-after) ?\\)
-                 (puni--forward-syntax "\\" bound)
-                 (unless (eq (point) bound) (forward-char))
-                 t)))
+    (when (puni--symbol-prefix-p)
+      (puni--forward-same-syntax bound))
+    (while (and (puni--symbol-syntax-p)
+                (puni--forward-same-syntax bound)))
     (let ((to (point)))
       (unless (eq from to)
         to))))
@@ -171,17 +190,12 @@ If BOUND is non-nil, stop before BOUND."
   "Backward version of `puni--forward-symbol'."
   (puni--error-if-after-point bound)
   (let ((from (point)))
-    ;; In case we start after an escape char.
-    (puni--backward-syntax "\\" bound)
-    (while (or (puni--backward-syntax "_w" bound)
-               (when (eq (puni--syntax-char-after (- (point) 2)) ?\\)
-                 (unless (eq (point) bound) (forward-char -1))
-                 (puni--backward-syntax "\\" bound)
-                 t)))
-    (puni--backward-syntax "'" bound)
+    (while (and (puni--symbol-syntax-p (1- (point)))
+                (puni--backward-same-syntax bound)))
     (let ((to (point)))
       (unless (eq from to)
-        to))))
+        (puni--backward-syntax "'" bound)
+        (point)))))
 
 (defun puni--in-symbol-p (beg end)
   "Return t if the region between BEG and END is in one symbol.
