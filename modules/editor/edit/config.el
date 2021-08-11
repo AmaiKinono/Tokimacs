@@ -335,13 +335,26 @@ See the docstring of `replace-string' for details."
 (use-package puni
   :straight nil
   :hook (after-init . puni-global-mode)
+  :init
+  ;; The default `puni-mode-map' respects "Emacs conventions".  We don't, so
+  ;; it's better to simply rewrite it.
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "DEL") 'puni-backward-delete-char)
+    (define-key map (kbd "C-d") 'puni-forward-delete-char)
+    (define-key map (kbd "M-d") 'puni-forward-kill-word)
+    (define-key map (kbd "M-DEL") 'puni-backward-kill-word)
+    (define-key map (kbd "C-k") 'puni-kill-line)
+    (define-key map (kbd "C-u") 'puni-backward-kill-line)
+    (define-key map (kbd "C-h") 'puni-force-delete)
+    (define-key map (kbd "C-M-f") 'puni-forward-sexp)
+    (define-key map (kbd "C-M-b") 'puni-backward-sexp)
+    (define-key map (kbd "C-M-a") 'puni-beginning-of-sexp)
+    (define-key map (kbd "C-M-e") 'puni-end-of-sexp)
+    (setq puni-mode-map map))
   :config
   (toki/setq puni--debug t)
-  (defun toki/disable-puni-mode ()
-    "Disable puni mode."
-    (puni-mode -1))
   ;; We want keys like C-k, M-DEL to be handled by the shell program.
-  (add-hook 'term-mode-hook #'toki/disable-puni-mode))
+  (add-hook 'term-mode-hook #'puni-disable-puni-mode))
 
 ;; We don't map soft delete commands defined in toki-editing for now, to test
 ;; puni in daily use.
@@ -529,8 +542,8 @@ these codes."
   ;; Sentence
   "M-\"" 'toki-forward-subsentence-or-punct
   "M-'" 'toki-backward-subsentence-or-punct
-  "M-." 'toki-forward-punct
-  "M-," 'toki-backward-punct
+  "M-." 'puni-syntactic-forward-punct
+  "M-," 'puni-syntactic-backward-punct
   ;; Paragraph
   "M-n" 'forward-paragraph
   "M-p" 'backward-paragraph
