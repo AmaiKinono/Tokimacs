@@ -675,7 +675,8 @@ symbol delimiters differently."
     (save-excursion
       (let ((beg (min pt1 pt2))
             (end (max pt1 pt2))
-            bound-before-end)
+            bound-before-end
+            bound-after-end)
         (goto-char beg)
         (while (< (point) end)
           (setq bound-before-end (point))
@@ -690,11 +691,34 @@ symbol delimiters differently."
         ;; part between BOUND-BEFORE-END and END is balanced, we can still
         ;; delete it.  Notice the (= (point) end) situation causes return in
         ;; the above code, so we don't need to handle it.
+        (setq bound-after-end (point))
         (goto-char end)
-        (if (and (puni-strict-backward-sexp)
-                 (eq (point) bound-before-end))
-            (cl-return t)
-          (cl-return nil))))))
+        ;; This means we reached BOUND-AFTER-END with one jump, so
+        ;; BOUND-BEFORE-END may not be the beginning of sexp before END.
+        (when (eq bound-before-end beg)
+          (setq bound-before-end (save-excursion
+                                   (goto-char bound-after-end)
+                                   (puni-strict-backward-sexp))))
+        ;; This is basically the same logic as in
+        ;; `puni--strict-primitive-forward-sexp'.
+        (cond
+         ((< bound-before-end beg)
+          (when (and (not (puni--inside-delim-p
+                           beg bound-before-end bound-after-end
+                           'forward))
+                     (progn (goto-char beg)
+                            (>= (puni--forward-syntax-block) end)))
+            (cl-return t)))
+         ((and (>= bound-before-end beg) (< bound-before-end end))
+          (when (eq (puni-strict-backward-sexp) bound-before-end)
+            (cl-return t)))
+         ;; (> bound-before-end end)
+         (t
+          (when (eq (progn (goto-char beg)
+                           (puni--forward-blanks end)
+                           (puni--forward-same-syntax end))
+                    end)
+            (cl-return t))))))))
 
 ;;;;; API: Deletion
 
