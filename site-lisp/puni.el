@@ -197,13 +197,6 @@ If BOUND is non-nil, stop before BOUND."
         (puni--backward-syntax "'" bound)
         (point)))))
 
-(defun puni--in-symbol-p (beg end)
-  "Return t if the region between BEG and END is in one symbol.
-See `puni--forward-symbol' to know what's a symbol."
-  (save-excursion
-    (goto-char beg)
-    (eq (puni--forward-symbol end) end)))
-
 ;;;;; Basic move: string
 
 (defun puni--forward-string ()
@@ -423,9 +416,6 @@ char before PT instead."
       ('backward (or (puni--pair-or-in-delim-p beg pt)
                      (puni--pair-or-in-delim-p (1- pt) end)))
       (_ (error "Invalid DIRECTION")))))
-
-;; NOTE: Try delete `(something)'
-;; NOTE: \"thing\"
 
 (defun puni--strict-primitive-forward-sexp ()
   "Move forward a sexp, return the point if success, otherwise return nil.
