@@ -563,8 +563,19 @@ and error \"Not in a THING\"."
                     (funcall probe)
                     (setq pos (point))
                     (< (point) to))))
-      (when (and pos (>= pos to))
-        (goto-char pos)))))
+      ;; We've successfully reached TO, while keeping inside the thing.
+      (if (eq pos to)
+          (goto-char to)
+        ;; If that's not the case, that means we jumped out of the thing by
+        ;; `forward-sexp'. This happens in strings with only puncts and blanks
+        ;; in it.  When this happens, we go forward one syntax block while
+        ;; keeping in the thing.
+        (let (goal)
+          (save-excursion
+            (puni--forward-syntax-block)
+            (when (funcall probe)
+              (setq goal (point))))
+          (when goal (goto-char goal)))))))
 
 (defun puni--strict-primitive-backward-sexp-in-thing (probe thing)
   "Backward version of `puni--strict-primitive-forward-sexp-in-thing'."
@@ -578,8 +589,14 @@ and error \"Not in a THING\"."
                     (funcall probe)
                     (setq pos (point))
                     (> (point) to))))
-      (when (and pos (<= pos to))
-        (goto-char pos)))))
+      (if (eq pos to)
+          (goto-char to)
+        (let (goal)
+          (save-excursion
+            (puni--backward-syntax-block)
+            (when (funcall probe)
+              (setq goal (point))))
+          (when goal (goto-char goal)))))))
 
 (defun puni-strict-forward-sexp-in-string ()
   "Move strict forward a sexp in when point is in string.
