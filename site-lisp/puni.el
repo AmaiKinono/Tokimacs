@@ -404,7 +404,19 @@ char before PT instead."
   (unless (or (save-excursion (goto-char beg) (or (puni--forward-string)
                                                   (puni--forward-symbol)))
               (save-excursion (goto-char end) (or (puni--backward-string)
-                                                  (puni--backward-symbol))))
+                                                  (puni--backward-symbol)))
+              ;; If BEG is the beginning of a single line comment, and pt is
+              ;; inside consecutive comment-opening delimiter chars, we also
+              ;; don't think it's inside the delimiter, as it's common to
+              ;; delete them one by one.
+              (save-excursion
+                (goto-char beg)
+                (and (puni--begin-of-single-line-comment-p)
+                     (looking-at (rx (* (literal (char-to-string (char-after))))))
+                     (> (match-end 0) (pcase direction
+                                        ('forward pt)
+                                        ('backward (1- pt))
+                                        (_ (error "Invalid DIRECTION")))))))
     (pcase direction
       ('forward (or (puni--pair-or-in-delim-p beg (1+ pt))
                     (puni--pair-or-in-delim-p pt end)))
