@@ -172,29 +172,6 @@ line."
 ;;;;;; Sentence
 
 ;;;###autoload
-(defun toki-forward-punct ()
-  "Jump to next punctuation char that's not inside a symbol.
-Also, consecutive chars with the same syntax after point is
-skipped.  This command is designed to give you a \"syntactical
-navigating\" feel."
-  (interactive)
-  ;; For some reason \"：\" is not considered as a punctuation.
-  (puni--forward-same-syntax)
-  (while (and (re-search-forward "[[:punct:]]\\|：")
-              (eq (puni--syntax-char-after (1- (point))) ?_))))
-
-;;;###autoload
-(defun toki-backward-punct ()
-  "Jump to previous punctuation char that's not inside a symbol.
-Also, consecutive chars with the same syntax before point is
-skipped.  This command is designed to give you a \"syntactical
-navigating\" feel."
-  (interactive)
-  (puni--backward-same-syntax)
-  (while (and (re-search-backward "[[:punct:]]\\|：")
-              (eq (puni--syntax-char-after) ?_))))
-
-;;;###autoload
 (defun toki-forward-subsentence ()
   "Jump forward by a subsentence.
 It jumps to the next period, comma, exclamation mark, question

@@ -882,7 +882,7 @@ the meaning of STRICT-SEXP, STYLE, KILL and FAIL-ACTION."
         (goal (save-excursion (funcall func) (point))))
     (puni-soft-delete pt goal strict-sexp style kill fail-action)))
 
-;;;; Commands
+;;;; Deletion Commands
 
 ;;;;; Kill/delete active region
 
@@ -955,7 +955,7 @@ Continue? "))
     (puni-soft-delete-by-move #'backward-word nil nil 'kill
                               'jump-and-reverse-delete)))
 
-;;;;;; Line
+;;;;; Line
 
 ;;;###autoload
 (defun puni-kill-line ()
@@ -985,7 +985,22 @@ Continue? "))
      (when (not (puni--line-empty-p))
        (save-excursion (indent-according-to-mode))))))
 
-;;;;;; Sexp
+;;;;; Force delete
+
+;;;###autoload
+(defun puni-force-delete ()
+  "Force delete backward char, or the active region.
+Can be used to fight with undesired behavior of structural
+editing."
+  (interactive)
+  (if (use-region-p)
+      (delete-region (region-beginning) (region-end))
+    (when (not (bobp))
+      (delete-region (1- (point)) (point)))))
+
+;;;; Navigation commands
+
+;;;;; Sexp
 
 ;;;###autoload
 (defun puni-forward-sexp ()
@@ -1027,18 +1042,73 @@ so we can pop back to it."
       (when (eobp)
         (push-mark from)))))
 
-;;;;;; Force delete
+;;;;; Punctuation
 
 ;;;###autoload
-(defun puni-force-delete ()
-  "Force delete backward char, or the active region.
-Can be used to fight with undesired behavior of structural
-editing."
+(defun puni-syntactic-forward-punct ()
+  "Jump to next punctuation syntactically.
+This means:
+
+- When you doesn't start in a string or comment, jump over
+  strings/comments/symbols.
+- When there are consecutive same chars, go to the last one
+  unless they have parentheses syntax.
+
+This command is designed to give you a \"syntactical navigating\"
+feel."
   (interactive)
-  (if (use-region-p)
-      (delete-region (region-beginning) (region-end))
-    (when (not (bobp))
-      (delete-region (1- (point)) (point)))))
+  (let ((in-str-or-comment-p (or (puni--in-comment-p) (puni--in-string-p)))
+        done)
+    (while (and (not done)
+                ;; For some reason "：" is not considered as a punctuation.
+                (re-search-forward "[[:punct:]]\\|："))
+      ;; The syntax table of the major mode is often not suitable for comment &
+      ;; strings.
+      (if in-str-or-comment-p
+          (setq done t)
+        ;; When we are not inside string/comment at first place, jump over
+        ;; them.
+        (when (not (or (puni--in-comment-p)
+                       (puni--in-string-p)
+                       ;; Don't go inside symbols.
+                       (eq (puni--syntax-char-after (1- (point))) ?_)))
+
+          (setq done t))))
+    (when-let ((syntax-after (puni--syntax-char-after (1- (point)))))
+      (unless (memq syntax-after '(?\( ?\)))
+        (when (looking-at (rx (* (literal (char-to-string (char-before))))))
+          (goto-char (match-end 0)))))))
+
+;;;###autoload
+(defun puni-syntactic-backward-punct ()
+  "Jump to previous punctuation syntactically.
+This means:
+
+- When you doesn't start in a string or comment, jump over
+  strings/comments/symbols.
+- When there are consecutive same chars, go to the last one
+  unless they have parentheses syntax.
+
+This command is designed to give you a \"syntactical navigating\"
+feel."
+  (interactive)
+  (let ((in-str-or-comment-p (or (puni--in-comment-p) (puni--in-string-p)))
+        done)
+    (while (and (not done)
+                (re-search-backward "[[:punct:]]\\|："))
+      (if in-str-or-comment-p
+          (setq done t)
+        (when (not (or (puni--in-comment-p)
+                       (puni--in-string-p)
+                       (eq (puni--syntax-char-after) ?_)))
+          (setq done t))))
+    (when-let ((syntax-after (puni--syntax-char-after)))
+      (unless (memq syntax-after '(?\( ?\)))
+        (when (looking-back (rx (* (literal (char-to-string (char-after)))))
+                            (line-beginning-position))
+          (goto-char (match-beginning 0)))))))
+
+;;;; Puni mode
 
 (defvar puni-mode-map
   (let ((map (make-sparse-keymap)))
@@ -1048,24 +1118,30 @@ editing."
     (define-key map (kbd "M-DEL") 'puni-backward-kill-word)
     (define-key map (kbd "C-k") 'puni-kill-line)
     (define-key map (kbd "C-S-k") 'puni-backward-kill-line)
-    (define-key map (kbd "C-DEL") 'puni-force-delete)
-    (define-key map (kbd "C-<backspace>") 'puni-force-delete)
+    (define-key map (kbd "C-c DEL") 'puni-force-delete)
     (define-key map (kbd "C-M-f") 'puni-forward-sexp)
     (define-key map (kbd "C-M-b") 'puni-backward-sexp)
     (define-key map (kbd "C-M-a") 'puni-beginning-of-sexp)
     (define-key map (kbd "C-M-e") 'puni-end-of-sexp)
+    (define-key map (kbd "M-(") 'puni-syntactic-backward-punct)
+    (define-key map (kbd "M-)") 'puni-syntactic-forward-punct)
     map)
   "Keymap used for `puni-structural-editing-mode'.")
 
 ;;;###autoload
 (define-minor-mode puni-mode
-  "Curated keybinds for structural deleting commands."
+  "Enable keybindings for Puni commands."
   :keymap puni-mode-map)
 
 ;;;###autoload
 (define-globalized-minor-mode puni-global-mode
   puni-mode
   (lambda () (puni-mode 1)))
+
+;;;###autoload
+(defun puni-disable-puni-mode ()
+  "Disable Puni mode in current buffer."
+  (puni-mode -1))
 
 (provide 'puni)
 
