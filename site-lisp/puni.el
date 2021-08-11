@@ -619,8 +619,20 @@ considered as in the comment."
 
 (defun puni-strict-backward-sexp-in-comment ()
   "Backward version of `puni-strict-forward-sexp-in-comment'."
-  (puni--strict-primitive-backward-sexp-in-thing #'puni--in-comment-p
-                                                 "comment"))
+  (let (to)
+    (or
+     (puni--strict-primitive-backward-sexp-in-thing #'puni--in-comment-p
+                                                    "comment")
+     ;; If moving backward a sexp takes us out of the comment, but we reach the
+     ;; beginning of a single line comment, we accept it as it's common to
+     ;; delete the opening delimiters of a single line comment.  Also notice
+     ;; that the last form has already confirmed we are actually in a comment.
+     (progn
+       (save-excursion
+         (puni--strict-primitive-backward-sexp)
+         (when (puni--begin-of-single-line-comment-p)
+           (setq to (point))))
+       (when to (goto-char to))))))
 
 ;;;; APIs
 
