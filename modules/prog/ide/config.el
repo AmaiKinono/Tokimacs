@@ -51,7 +51,6 @@ chars.  This should be useful for CJK users."
 ;;; Ctags
 
 (use-package citre
-  :straight (:host github :repo "universal-ctags/citre")
   :defer t
   :init
   (require 'citre-config)
