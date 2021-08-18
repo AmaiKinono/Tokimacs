@@ -373,8 +373,7 @@ See the docstring of `toki-fontset-font-list' for details."
 (when (not toki-gui-p)
   (set-face-attribute 'vertical-border nil :background 'unspecified))
 
-;; Ref: https://debbugs.gnu.org/cgi/bugreport.cgi?bug=44448
-;; (setq ring-bell-function #'toki-blink-window-num)
+(setq ring-bell-function #'toki-blink-mode-line)
 
 ;; toki-blink provides a simple command `toki-blink' to blink current line.
 (use-package toki-blink

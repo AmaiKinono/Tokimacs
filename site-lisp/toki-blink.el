@@ -39,10 +39,10 @@
 (defvar toki/blink-timer nil
   "Timer used for fading the blinking.")
 
-(defvar toki/blink-tab-line-colors nil
+(defvar toki/blink-mode-line-colors nil
   "Tab line version of `toki/blink-colors'.")
 
-(defvar toki/blink-tab-line-timer nil
+(defvar toki/blink-mode-line-timer nil
   "Timer used for fading the blinking on tab line.")
 
 (defun toki/blink-ov-range ()
@@ -109,15 +109,15 @@ blinking.  If it's nil, blink only once."
       (cancel-timer toki/blink-timer)
       (setq toki/blink-timer nil))))
 
-(declare-function toki/refresh-win-num "config")
+(defvar toki/mode-line-bg-orig (face-attribute 'mode-line :background))
 
-(defun toki/blink-tab-line-fade ()
+(defun toki/blink-mode-line-fade ()
   "Fade the blinking of tab line."
-  (let ((color (pop toki/blink-tab-line-colors)))
+  (let ((color (pop toki/blink-mode-line-colors)))
     (if color
-        (set-face-attribute 'toki/window-number nil :background color)
-      (cancel-timer toki/blink-tab-line-timer)
-      (toki/refresh-win-num))))
+        (set-face-attribute 'mode-line nil :background color)
+      (set-face-attribute 'mode-line nil :background toki/mode-line-bg-orig)
+      (cancel-timer toki/blink-mode-line-timer))))
 
 ;;;; Main entry point
 
@@ -139,19 +139,21 @@ Customize `toki-blink-color', `toki-blink-fade-time',
     (setq toki/blink-timer
           (run-with-timer nil toki-blink-fade-time-step #'toki/blink-fade))))
 
-;; TODO: separate user options for this function?
-
 ;;;###autoload
-(defun toki-blink-window-num ()
+(defun toki-blink-mode-line ()
   "Blink tab line."
   (interactive)
-  (when (timerp toki/blink-tab-line-timer)
-    (setq toki/blink-tab-line-colors nil)
-    (cancel-timer toki/blink-tab-line-timer)
-    (setq toki/blink-tab-line-timer nil))
-  (setq toki/blink-tab-line-timer
+  (if (timerp toki/blink-mode-line-timer)
+      (progn
+        (setq toki/blink-mode-line-colors nil)
+        (cancel-timer toki/blink-mode-line-timer)
+        (setq toki/blink-mode-line-timer nil))
+    (setq toki/mode-line-bg-orig (face-attribute 'mode-line :background)))
+  (setq toki/blink-mode-line-colors (toki/blink-colors))
+  (setq toki/blink-mode-line-timer
         (run-with-timer nil toki-blink-fade-time-step
-                        #'toki/blink-tab-line-fade)))
+                        #'toki/blink-mode-line-fade)))
+
 ;;;###autoload
 (defun toki-recenter ()
   "Recenter and blink current line.
