@@ -180,20 +180,29 @@ This is used in the path info."
 
 (defun toki-modeline-vc ()
   "Return the VCS info."
-  (if (and vc-mode buffer-file-name)
-      (progn
-        (let* ((backend (vc-backend buffer-file-name))
-               (state (vc-state buffer-file-name backend)))
+  (let* ((file buffer-file-name)
+         (dir (unless file default-directory))
+         ;; NOTE: `vc-backend' doesn't accept dir, while
+         ;; `vc-responsible-backend' does. This also works for
+         ;; non-registered files.
+         (backend (ignore-errors
+                    (vc-responsible-backend (or file dir))))
+         state)
+    (if backend
+        (progn
+          (when file (setq state (vc-state file backend)))
+          ;; Initialize `vc-mode' variable for directory.
+          (when dir (vc-mode-line dir backend))
           (concat
            (pcase state
-             ((or 'up-to-date 'edited) "@")
+             ((or 'up-to-date 'edited 'nil) "@")
              ((or 'removed 'conflict 'unregistered) "!")
              ((or 'needs-update 'needs-merge) "^")
              ('added "+")
              ((pred stringp) (concat state ":"))
              (_ "?"))
-           (substring vc-mode (+ (if (eq backend 'Hg) 2 3) 2)))))
-    ""))
+           (substring vc-mode (+ (if (eq backend 'Hg) 2 3) 2))))
+      "")))
 
 (defun toki-modeline-evil ()
   "Return the evil state."
