@@ -29,9 +29,8 @@
 (defvar toki-modeline-path-truncated-length 1
   "How many letters to leave after truncation.")
 
-(defvar toki-modeline-update-interval 0.2
-  "Update interval in secs.
-Set to nil to update on every redisplay.")
+(defvar toki-modeline-update-after-idle-time 0.3
+  "The time to wait after idle to update modeline.")
 
 (defface toki-modeline-time-face
   '((((background light))
@@ -251,12 +250,17 @@ This is used in the path info."
 
 ;; NOTE: This doesn't deal with miniframes.
 (defun toki-modeline/update-selected-window (frame)
+  "Record the last selected window in FRAME."
   (unless (minibufferp)
     (setq toki-modeline/selected-window (frame-selected-window frame))))
 
 (defvar-local toki-modeline/cache (make-hash-table :test #'eq))
 
-(defvar toki-modeline/last-update nil)
+(defvar toki-modeline/trigger-timer nil
+  "The timer for triggering first update after idle.")
+
+(defvar toki-modeline/update-timer nil
+  "The timer for updating while idle.")
 
 ;;;; Modeline formats
 
@@ -269,9 +273,19 @@ This is used in the path info."
    '(:eval (toki-modeline-pad
             (propertize (toki-modeline-vc) 'face 'toki-modeline-vc-face)))
    '(:eval (toki-modeline-pad
-            (propertize mode-name 'face 'toki-modeline-mode-face)))
+            (propertize (format-mode-line mode-name) 'face 'toki-modeline-mode-face)))
    '(:eval (propertize (toki-modeline-evil) 'face 'toki-modeline-evil-face)))
   "Modeline format for active window.")
+
+(defvar toki-modeline-inactive-format
+  (list
+   '(:eval (toki-modeline-pad
+            (propertize (toki-modeline-location) 'face 'toki-modeline-location-face)))
+   '(:eval (toki-modeline-pad
+            (propertize (buffer-name) 'face 'toki-modeline-path-face)))
+   '(:eval (toki-modeline-pad
+            (propertize (format-mode-line mode-name) 'face 'toki-modeline-mode-face))))
+  "Modeline format for inaactive window.")
 
 (defvar toki-modeline-left-format
   (when (bound-and-true-p winum-mode)
@@ -288,30 +302,43 @@ This is used in the path info."
   "Modeline format showing battery and time info.")
 
 (defun toki-modeline-compute (&optional force)
-  (let ((format)
-        (active-window-p (eq (selected-window) toki-modeline/selected-window)))
+  "Compute the modeline content for current window.
+The result is cached.  If FORCE is non-nil, recompute and rewrite
+the cache."
+  (let ((active-window-p (eq (selected-window) toki-modeline/selected-window))
+        format)
     (setq format
           (if (or force
-                  (null toki-modeline-update-interval)
-                  (null (gethash (selected-window) toki-modeline/cache))
-                  (> (float-time (time-since toki-modeline/last-update))
-                     toki-modeline-update-interval))
+                  (null (gethash (selected-window) toki-modeline/cache)))
               (let* ((l (format-mode-line toki-modeline-left-format))
-                     (r (string-trim (format-mode-line toki-modeline-main-format)))
+                     (r (string-trim (format-mode-line
+                                      (if active-window-p
+                                          toki-modeline-main-format
+                                        toki-modeline-inactive-format))))
                      (pad (toki-modeline/right-align-space r))
                      (format (list l pad r)))
                 (puthash (selected-window) format toki-modeline/cache)
-                (setq toki-modeline/last-update (current-time))
                 format)
             (gethash (selected-window) toki-modeline/cache)))
     (if active-window-p
         format
       (mapcar (lambda (s) (propertize s 'face nil)) format))))
 
-(defun toki-modeline-setup-hooks ()
+(defun toki-modeline/refresh-modeline ()
+  "Recompute and refresh modeline."
+  (dolist (w (window-list))
+    (with-selected-window w
+      (toki-modeline-compute 'force)))
+  (force-mode-line-update 'all))
+
+(defun toki-modeline-setup ()
+  "Setup modeline."
   (add-hook 'window-selection-change-functions
             #'toki-modeline/update-selected-window)
-  (toki-modeline/update-selected-window (selected-frame)))
+  (toki-modeline/update-selected-window (selected-frame))
+  (setq toki-modeline/trigger-timer
+        (run-with-idle-timer toki-modeline-update-after-idle-time
+                             t #'toki-modeline/refresh-modeline)))
 
 (provide 'toki-modeline)
 

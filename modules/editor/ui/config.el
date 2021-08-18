@@ -354,7 +354,7 @@ See the docstring of `toki-fontset-font-list' for details."
   :init
   (setq-default mode-line-format '(:eval (toki-modeline-compute)))
   :config
-  (toki-modeline-setup-hooks))
+  (toki-modeline-setup))
 
 (defun toki/modeline-refresh-face ()
   (let ((bg (face-attribute 'default :background)))
