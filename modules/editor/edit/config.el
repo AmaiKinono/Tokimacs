@@ -333,8 +333,8 @@ See the docstring of `replace-string' for details."
 ;; TODO: more ideas on structural editing; evil-matchit, embrace
 
 (use-package puni
-  :straight nil
-  :hook (after-init . puni-global-mode)
+  :straight (:host github :repo "AmaiKinono/puni")
+  :defer t
   :init
   ;; The default `puni-mode-map' respects "Emacs conventions".  We don't, so
   ;; it's better to simply rewrite it.
@@ -351,10 +351,11 @@ See the docstring of `replace-string' for details."
     (define-key map (kbd "C-M-a") 'puni-beginning-of-sexp)
     (define-key map (kbd "C-M-e") 'puni-end-of-sexp)
     (setq puni-mode-map map))
-  :config
-  (toki/setq puni--debug t)
+  (puni-global-mode)
   ;; We want keys like C-k, M-DEL to be handled by the shell program.
-  (add-hook 'term-mode-hook #'puni-disable-puni-mode))
+  (add-hook 'term-mode-hook #'puni-disable-puni-mode)
+  :config
+  (toki/setq puni--debug t))
 
 ;; We don't map soft delete commands defined in toki-editing for now, to test
 ;; puni in daily use.
