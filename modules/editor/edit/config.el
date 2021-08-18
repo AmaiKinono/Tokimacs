@@ -384,21 +384,15 @@ See the docstring of `replace-string' for details."
   :config
   (define-advice show-paren-function (:around (fn) fix)
     "Highlight enclosing parens when point is inside them."
-    ;; Hack.  `show-paren-function' checks the value of `show-paren-mode', but
-    ;; we don't want to use `show-paren-mode'.
-    (let ((show-paren-mode t))
-      (if (looking-at-p (rx (* white) (syntax open-parenthesis)))
-          (funcall fn)
-        (save-excursion
-          (ignore-errors (backward-up-list))
-          (funcall fn)))))
+    (if (looking-at-p (rx (* white) (syntax open-parenthesis)))
+        (funcall fn)
+      (save-excursion
+        (ignore-errors (backward-up-list))
+        (funcall fn))))
   (toki/setq
    show-paren-when-point-in-periphery t
    show-paren-when-point-inside-paren t)
-  ;; We don't use show-paren-mode, as it triggers the bug in
-  ;; https://github.com/kiennq/emacs-mini-modeline/issues/45 and
-  ;; https://debbugs.gnu.org/cgi/bugreport.cgi?bug=44448
-  (add-hook 'post-command-hook #'show-paren-function))
+  (show-paren-mode))
 
 ;;; Misc packages
 
