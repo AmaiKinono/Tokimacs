@@ -44,7 +44,9 @@
    ;; when first saving.  If you don't like this, configure your gpg-agent to
    ;; not caching passwords.  I haven't found a way to disable it in Emacs.
    epa-file-cache-passphrase-for-symmetric-encryption t)
-  (epa-file-enable))
+  ;; Don't show "epa already enabled" when enabling.
+  (let ((inhibit-message t))
+    (epa-file-enable)))
 
 ;;; Window
 
