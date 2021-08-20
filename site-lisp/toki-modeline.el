@@ -177,31 +177,42 @@ This is used in the path info."
                 (string-join (nreverse shown-path) "/")))
     (buffer-name)))
 
+(defun toki-modeline--vc-file ()
+  "Return VCS info for current file buffer.
+Return nil if the file isn't version controlled."
+  (when-let* ((file buffer-file-name)
+              (backend (ignore-errors
+                         (vc-responsible-backend file))))
+    (concat
+     (pcase (vc-state file backend)
+       ((or 'up-to-date 'edited 'nil) "@")
+       ((or 'removed 'conflict 'unregistered) "!")
+       ((or 'needs-update 'needs-merge) "^")
+       ('added "+")
+       ((and (pred stringp) state) (concat state ":"))
+       (_ "?"))
+     (substring vc-mode (+ (if (eq backend 'Hg) 2 3) 2)))))
+
+(defun toki-modeline--vc-dir ()
+  "Return VCS info for current directory buffer.
+Return nil if the dir isn't version controlled."
+  (when-let* ((dir default-directory)
+              (backend (ignore-errors
+                         (vc-responsible-backend dir)))
+              (infostr (vc-call-backend backend 'dir-extra-headers
+                                        dir)))
+    (when (string-match (rx line-start "Branch"
+                            (* space) ":" (* space)
+                            (group (+ not-newline))
+                            line-end)
+                        infostr)
+      (concat "@" (substring-no-properties (match-string 1 infostr))))))
+
 (defun toki-modeline-vc ()
   "Return the VCS info."
-  (let* ((file buffer-file-name)
-         (dir (unless file default-directory))
-         ;; NOTE: `vc-backend' doesn't accept dir, while
-         ;; `vc-responsible-backend' does. This also works for
-         ;; non-registered files.
-         (backend (ignore-errors
-                    (vc-responsible-backend (or file dir))))
-         state)
-    (if backend
-        (progn
-          (when file (setq state (vc-state file backend)))
-          ;; Initialize `vc-mode' variable for directory.
-          (when dir (vc-mode-line dir backend))
-          (concat
-           (pcase state
-             ((or 'up-to-date 'edited 'nil) "@")
-             ((or 'removed 'conflict 'unregistered) "!")
-             ((or 'needs-update 'needs-merge) "^")
-             ('added "+")
-             ((pred stringp) (concat state ":"))
-             (_ "?"))
-           (substring vc-mode (+ (if (eq backend 'Hg) 2 3) 2))))
-      "")))
+  (or (and buffer-file-name (toki-modeline--vc-file))
+      (toki-modeline--vc-dir)
+      ""))
 
 (defun toki-modeline-evil ()
   "Return the evil state."
