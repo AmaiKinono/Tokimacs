@@ -255,6 +255,12 @@ Return nil if the dir isn't version controlled."
      week
      (format-time-string " %H:%M]"))))
 
+(defun toki-modeline-tabs ()
+  "Return tabs."
+  (if (bound-and-true-p toki-tabs-mode)
+      (toki-tabs-string)
+    ""))
+
 ;;;; Internals
 
 (defvar toki-modeline/selected-window nil)
@@ -280,7 +286,7 @@ Return nil if the dir isn't version controlled."
    '(:eval (toki-modeline-pad
             (propertize (toki-modeline-location) 'face 'toki-modeline-location-face)))
    '(:eval (toki-modeline-pad
-            (propertize (toki-modeline-path) 'face 'toki-modeline-path-face)))
+            (propertize (buffer-name) 'face 'toki-modeline-path-face)))
    '(:eval (toki-modeline-pad
             (propertize (toki-modeline-vc) 'face 'toki-modeline-vc-face)))
    '(:eval (toki-modeline-pad
@@ -300,8 +306,11 @@ Return nil if the dir isn't version controlled."
 
 (defvar toki-modeline-left-format
   (when (bound-and-true-p winum-mode)
-    (list '(:eval (propertize (concat " #" (format "%s" (winum-get-number)))
-                              'face 'toki-modeline-winum-face))))
+    (list '(:eval (toki-modeline-pad
+                   (propertize (concat " #" (format "%s" (winum-get-number)))
+                               'face 'toki-modeline-winum-face)))
+          '(:eval (toki-modeline-pad
+                   (toki-modeline-tabs)))))
   "Modeline format for displaying in the left.")
 
 ;; NOTE: Currently unused.
@@ -341,6 +350,11 @@ the cache."
     (with-selected-window w
       (toki-modeline-compute 'force)))
   (force-mode-line-update 'all))
+
+(defun toki-modeline/refresh-active-modeline ()
+  "Recompute and refresh active modeline."
+  (toki-modeline-compute 'force)
+  (force-mode-line-update))
 
 (defun toki-modeline-setup ()
   "Setup modeline."

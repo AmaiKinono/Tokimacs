@@ -103,49 +103,13 @@ more than 2, it will ask for the number of the window."
     (funcall initial-major-mode)
     buf))
 
-(use-package awesome-tab
-  :straight (:host github :repo "manateelazycat/awesome-tab")
-  :hook (emacs-startup . awesome-tab-mode)
+(use-package toki-tabs
+  :straight nil
+  :after toki-modeline
   :config
-  (toki/setq
-   awesome-tab-dark-unselected-blend 0.6
-   awesome-tab-light-unselected-blend 0.9
-   ;; awesome-tab-height 140
-   awesome-tab-ace-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l)
-   awesome-tab-terminal-dark-select-background-color "#DDDDDD"
-   awesome-tab-terminal-dark-select-foreground-color "#333333"
-   awesome-tab-terminal-dark-unselect-background-color "#333333"
-   awesome-tab-terminal-dark-unselect-foreground-color "#999999")
-  (when (not toki-gui-p)
-    (toki/setq awesome-tab-display-icon nil))
-
-  ;; get rid of header line in which-key buffer.
-  ;; awesome-tab actually have `awesometab-hide-tabs-hooks' for this, but it has
-  ;; to be set before awesome-tab is loaded. So we just do it ourselves.
-  (defun toki/remove-which-key-buffer-header-line ()
-    (setq-local header-line-format nil))
-  (add-hook 'which-key-init-buffer-hook
-            #'toki/remove-which-key-buffer-header-line)
-
-  (define-advice awesome-tab-project-name (:around (fn) fix)
-    "Use our own project root function."
-    (if-let ((project (toki-project-root)))
-        (format "Project: %s" project)
-      awesome-tab-common-group-name))
-
-  (defun toki-buffer-group ()
-    "An `awesome-tab-buffer-groups-function' that group buffers by projects."
-    (list (awesome-tab-get-group-name (current-buffer))))
-  (toki/setq awesome-tab-buffer-groups-function #'toki-buffer-group)
-
-  (defun toki-refresh-tabs ()
-    "Refresh the display of tabs. This runs with`toki-after-load-theme-hook'
-in order to have the right face colors."
-    (interactive)
-    (awesome-tab-refresh-display))
-
-  (add-hook 'toki-after-load-theme-hook #'toki-refresh-tabs)
-  (add-hook 'after-change-major-mode-hook #'toki-refresh-tabs))
+  (toki-tabs-mode)
+  (add-to-list 'toki-tabs-update-hook #'toki-modeline/refresh-active-modeline)
+  (setq toki-tabs-project-root-function #'toki-project-root))
 
 ;;; Buffer <-> Window
 
@@ -222,8 +186,8 @@ in order to have the right face colors."
 
 (general-def
   :states 'normal
-  "gt" 'awesome-tab-forward
-  "gT" 'awesome-tab-backward)
+  "gt" 'toki-tabs-next
+  "gT" 'toki-tabs-previous)
 
 (toki-buffer-def
   "n" '(toki-new-buffer :wk "New Buffer")
@@ -235,10 +199,7 @@ in order to have the right face colors."
   "c" '(toki-copy-buf-to-window :wk "Copy to Window"))
 
 (toki-tab-def
-  "b" `(,(toki/make-combo awesome-tab-backward-tab) :wk "Prev Tab")
-  "f" `(,(toki/make-combo awesome-tab-forward-tab) :wk "Next Tab")
-  "p" `(,(toki/make-combo awesome-tab-backward-group) :wk "Prev Group")
-  "n" `(,(toki/make-combo awesome-tab-forward-group) :wk "Next Group")
-  "a" '(awesome-tab-select-beg-tab :wk "Select Beginning Tab")
-  "A" '(awesome-tab-move-current-tab-to-beg :wk "Move Tab to Beginning")
-  "j" '(awesome-tab-ace-jump :wk "Jump to Tab"))
+  "b" `(,(toki/make-combo toki-tabs-previous) :wk "Prev Tab")
+  "f" `(,(toki/make-combo toki-tabs-next) :wk "Next Tab")
+  "k" '(toki-tabs-kill-invisible-buffers-in-group :wk "Keep Visible in Group")
+  "K" '(toki-tabs-kill-buffers-in-group :wk "Kill Buffer Group"))
