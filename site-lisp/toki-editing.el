@@ -20,6 +20,8 @@
 
 ;;;; Libraries
 
+(toki-declare-ext-pkg puni)
+
 (require 'cl-lib)
 (require 'puni)
 

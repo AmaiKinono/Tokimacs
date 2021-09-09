@@ -333,7 +333,6 @@ See the docstring of `replace-string' for details."
 ;; TODO: more ideas on structural editing; evil-matchit, embrace
 
 (use-package puni
-  :straight (:host github :repo "AmaiKinono/puni")
   :defer t
   :init
   ;; The default `puni-mode-map' respects "Emacs conventions".  We don't, so
