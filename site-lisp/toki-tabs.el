@@ -234,7 +234,7 @@ Current and non-active buffers are distinguished by faces."
          (tab-visible-p (memq current-buf tabs))
          (num (cdr tabs-and-remain))
          (rest (unless (or (eq num 0) (null num))
-                 (propertize (concat "+" (number-to-string num))
+                 (propertize (concat "+" (number-to-string num) "..")
                              'face 'toki-tabs-rest-face)))
          (get-string (lambda (buf)
                        (if (eq buf current-buf)
@@ -246,7 +246,6 @@ Current and non-active buffers are distinguished by faces."
                                 'face 'toki-tabs-separator-face)))
     (when (and rest (not tab-visible-p))
       (setq rest (concat rest
-                         (propertize ".." 'face 'toki-tabs-rest-face)
                          (propertize (buffer-name current-buf)
                                      'face 'toki-tabs-current-tab-face))))
     (if tabs
