@@ -427,7 +427,7 @@ See the docstring of `replace-string' for details."
                       :underline t :weight unspecified)))
 
   ;; Use softer visual cue for trailing whitespaces.
-  (face-spec-set 'trailing-whitespace
+  (face-spec-set 'whitespace-trailing
                  '((((background light))
                     :background "#e5d5d5")
                    (t
@@ -439,6 +439,12 @@ See the docstring of `replace-string' for details."
                     :background "#d8d8d8" :foreground "#de4da1")
                    (t
                     :background "#404040" :foreground "#ee6aa7")))
+
+  (face-spec-set 'whitespace-empty
+                 '((((background light))
+                    :background "#e7dfdf")
+                   (t
+                    :background "#353535")))
 
   (toki/setq
    whitespace-line-column nil
