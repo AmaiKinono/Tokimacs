@@ -33,7 +33,9 @@
   "A string used as separator between tabs.")
 
 (defvar toki-tabs-update-hook nil
-  "Hook to run when tabs need to be redisplayed.")
+  "Hook to run when tabs need to be redisplayed.
+You should customize this hook to run code that's needed to
+update the UI.  `toki-tabs-string' can be used in the code.")
 
 (defface toki-tabs-current-tab-face
   '((((background light))
@@ -58,8 +60,8 @@
      :foreground "#665c54" :bold t :inherit 'mode-line-active))
   "Face for separator.")
 
-(defface toki-tabs-remainder-face
-  '((t :inherit 'default))
+(defface toki-tabs-rest-face
+  '((t :italic t :bold nil :inherit 'mode-line-active))
   "Face for current tab.")
 
 ;;;; Internals
@@ -99,10 +101,12 @@ When BUFFER is nil, use current buffer."
   "Used frequency of current buffer.")
 
 (defun toki-tabs/buffer-freq (buf)
+  "Return the used frequency of buffer BUF."
   (or (buffer-local-value 'toki-tabs/buffer-freq buf)
       0))
 
 (defun toki-tabs/increase-buffer-freq ()
+  "Increase the used frequency of current buffer by 1."
   (cl-incf toki-tabs/buffer-freq))
 
 (defun toki-tabs/buffer-freq-higher-p (buf1 buf2)
@@ -111,6 +115,11 @@ When BUFFER is nil, use current buffer."
      (toki-tabs/buffer-freq buf2)))
 
 (defun toki-tabs/insert-buf (buf bufs)
+  "Insert BUF into sorted BUFS.
+BUFS is sorted in the decreasing order of used frequency.  The
+insertion keeps this order.
+
+This is non-destructive and the list after insertion is returned."
   (let ((freqs (mapcar #'toki-tabs/buffer-freq bufs))
         (freq (toki-tabs/buffer-freq buf))
         idx)
@@ -125,48 +134,53 @@ When BUFFER is nil, use current buffer."
               (cl-subseq bufs idx)))))
 
 (defun toki-tabs-start-count-freq ()
+  "Start counting buffer used frequency."
   (setq toki-tabs/timer
         (run-with-idle-timer toki-tabs-count-freq-idle-time
                              t #'toki-tabs/increase-buffer-freq)))
 
 (defun toki-tabs-stop-count-freq ()
+  "Stop counting buffer used frequency."
   (cancel-timer toki-tabs/timer)
   (setq toki-tabs/timer nil))
 
 ;;;;; Sorted buffer list
 
-(defvar toki-tabs/sorted-buffer-list nil)
+(defvar toki-tabs/sorted-buffer-list nil
+  "Buffer list sorted by used frequency.
+This contains all non-hidden buffers returned by `buffer-list'.
+It's updated by `toki-tabs/update-buffer-list'.")
 
-(defvar toki-tabs/last-active-buffer nil)
+(defvar toki-tabs/last-active-buffer nil
+  "Last active buffer.
+Minibuffer doesn't count.  This is updated by
+`toki-tabs/update-buffer-list'.")
 
-(defvar toki-tabs/inhibit-resort nil)
-
-(defvar toki-tabs/exit-from-minibuffer nil)
+(defvar toki-tabs/inhibit-resort nil
+  "Non-nil means don't resort `toki-tabs/sorted-buffer-list'.")
 
 (defun toki-tabs/update-buffer-list ()
-  (let ((minibufferp (minibufferp))
-        (current-buffer (current-buffer)))
-    (if (or toki-tabs/inhibit-resort
-            toki-tabs/exit-from-minibuffer
-            (window-minibuffer-p)
-            ;; We don't resort when the current buffer is not changed, and non
-            ;; of the non-hidden buffers is killed.
-            (and (eq current-buffer toki-tabs/last-active-buffer)
-                 (not (cl-some #'buffer-live-p toki-tabs/sorted-buffer-list))))
-        (unless (or minibufferp
-                    (eq current-buffer toki-tabs/last-active-buffer))
-          (run-hooks 'toki-tabs-update-hook))
-      (let ((bufs (buffer-list)))
-        (setq bufs (cl-remove-if-not #'toki-tabs/buffer-group bufs))
-        (setq bufs (sort bufs #'toki-tabs/buffer-freq-higher-p))
-        (setq toki-tabs/sorted-buffer-list bufs)
-        (run-hooks 'toki-tabs-update-hook)))
-    (unless minibufferp
-      (setq toki-tabs/last-active-buffer (current-buffer)))))
+  "Update internal data when appropriate."
+  (unless (window-minibuffer-p)
+    (let ((current-buffer (current-buffer)))
+      ;; We don't update when the current buffer is not changed, and non of the
+      ;; non-hidden buffers is killed.
+      (unless (and (eq current-buffer toki-tabs/last-active-buffer)
+                   (cl-every #'buffer-live-p
+                             toki-tabs/sorted-buffer-list))
+        (unless toki-tabs/inhibit-resort
+          (let ((bufs (buffer-list)))
+            (setq bufs (cl-remove-if-not #'toki-tabs/buffer-group bufs))
+            (setq bufs (sort bufs #'toki-tabs/buffer-freq-higher-p))
+            (setq toki-tabs/sorted-buffer-list bufs)))
+        (run-hooks 'toki-tabs-update-hook)
+        (setq toki-tabs/last-active-buffer (current-buffer))))))
 
 ;;;;; UI
 
 (defun toki-tabs-visible-tabs-and-remain-num ()
+  "Return the visible tabs and number of remaining tabs in a cons cell.
+When the current buffer is a hidden buffer, return nil."
   (let* ((buf (current-buffer))
          (group (toki-tabs/buffer-group buf))
          (counter 0)
@@ -181,6 +195,7 @@ When BUFFER is nil, use current buffer."
               counter))))
 
 (defun toki-tabs-visible-tabs ()
+  "Return the visible tabs."
   (let* ((buf (current-buffer))
          (group (toki-tabs/buffer-group buf))
          tabs)
@@ -193,14 +208,34 @@ When BUFFER is nil, use current buffer."
         (nreverse tabs))))
 
 (defun toki-tabs-string ()
+  "Return a string that shows the tabs for current buffer.
+Possible ways of using this string is to show it in the mode line
+or header line, see `mode-line-format' and `header-line-format'
+for instructions.  See \"site-lisp/toki-modeline.el\" for
+example.
+
+The string may look like
+
+    tab1 | tab2 | 2+..tab5
+
+\"tab1\" and \"tab2\" are the actual tabs, \"2+\" means there are
+2 more buffers in the current group that's not shown.  When the
+current buffer is one of these invisible buffers (\"tab5\" in
+this case), it is shown after the \"1+\" part.
+
+Notice that though \"tab5\" is shown to indicate the current
+buffer, technically it's not in the tabs, and is still considered
+\"invisible\" by `toki-tabs-kill-invisible-buffers-in-group'.
+
+Current and non-active buffers are distinguished by faces."
   (let* ((current-buf (current-buffer))
          (tabs-and-remain (toki-tabs-visible-tabs-and-remain-num))
          (tabs (car tabs-and-remain))
+         (tab-visible-p (memq current-buf tabs))
          (num (cdr tabs-and-remain))
-         (num (if (eq num 0)
-                  nil
-                (list (propertize (concat "+" (number-to-string num))
-                                  'face 'toki-tabs-remainder-face))))
+         (rest (unless (or (eq num 0) (null num))
+                 (propertize (concat "+" (number-to-string num))
+                             'face 'toki-tabs-rest-face)))
          (get-string (lambda (buf)
                        (if (eq buf current-buf)
                            (propertize (buffer-name buf)
@@ -209,13 +244,22 @@ When BUFFER is nil, use current buffer."
                                      'face 'toki-tabs-inactive-tab-face))))
          (separator (propertize toki-tabs-separator
                                 'face 'toki-tabs-separator-face)))
+    (when (and rest (not tab-visible-p))
+      (setq rest (concat rest
+                         (propertize ".." 'face 'toki-tabs-rest-face)
+                         (propertize (buffer-name current-buf)
+                                     'face 'toki-tabs-current-tab-face))))
     (if tabs
-        (string-join (nconc (mapcar get-string tabs) num) separator)
-      "")))
+        (string-join (nconc (mapcar get-string tabs) (when rest (list rest)))
+                     separator)
+      (propertize (buffer-name current-buf) 'face 'toki-tabs-current-tab-face))))
 
 ;;;; Commands
 
 (defun toki-tabs-previous ()
+  "Switch to the previous tab.
+When the current buffer is the first tab, or not in the tabs,
+switch to the last tab."
   (interactive)
   (let* ((buf (current-buffer))
          (tabs (toki-tabs-visible-tabs))
@@ -228,6 +272,9 @@ When BUFFER is nil, use current buffer."
       (switch-to-buffer (nth (1- idx) tabs))))))
 
 (defun toki-tabs-next ()
+  "Switch to the next tab.
+When the current buffer is the last tab, or not in the tabs,
+switch to the first tab."
   (interactive)
   (let* ((buf (current-buffer))
          (tabs (toki-tabs-visible-tabs))
@@ -240,6 +287,10 @@ When BUFFER is nil, use current buffer."
       (switch-to-buffer (nth (1+ idx) tabs))))))
 
 (defun toki-tabs-kill-invisible-buffers-in-group ()
+  "Kill all buffers that's not in the tabs in current group.
+Notice when the current buffer is not in the tabs, though it may
+still be shown after the \"n+\" part in the tabs, it will be
+killed."
   (interactive)
   (when-let ((group (toki-tabs/buffer-group (current-buffer)))
              (tabs (toki-tabs-visible-tabs)))
@@ -249,6 +300,7 @@ When BUFFER is nil, use current buffer."
         (kill-buffer b)))))
 
 (defun toki-tabs-kill-buffers-in-group ()
+  "Kill all buffers in current group."
   (interactive)
   (when-let ((group (toki-tabs/buffer-group (current-buffer))))
     (dolist (b (buffer-list))
@@ -256,6 +308,7 @@ When BUFFER is nil, use current buffer."
         (kill-buffer b)))))
 
 (defun toki-tabs-switch-to-buffer-in-group ()
+  "Switch to a buffer in current group."
   (interactive)
   (when-let ((group (toki-tabs/buffer-group (current-buffer))))
     (let (bufs collection)
@@ -276,7 +329,10 @@ When BUFFER is nil, use current buffer."
 
 ;;;###autoload
 (define-minor-mode toki-tabs-mode
-  "Minor mode for tabs."
+  "Minor mode for maintaining data for showing tabs.
+This mode doesn't offer an UI for showing the tabs.  See
+`toki-tabs-update-hook' and `toki-tabs-string' to know how to
+plug-in an UI for tabs."
   :global t
   (if toki-tabs-mode
       (progn

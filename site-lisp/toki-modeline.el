@@ -255,6 +255,13 @@ Return nil if the dir isn't version controlled."
      week
      (format-time-string " %H:%M]"))))
 
+(defun toki-modeline-winum ()
+  "Return window number info provided by `winum-mode'."
+  (if (bound-and-true-p winum-mode)
+      (propertize (concat "#" (format "%s" (winum-get-number)))
+                  'face 'toki-modeline-winum-face)
+    ""))
+
 (defun toki-modeline-tabs ()
   "Return tabs."
   (if (bound-and-true-p toki-tabs-mode)
@@ -269,7 +276,8 @@ Return nil if the dir isn't version controlled."
 (defun toki-modeline/update-selected-window (frame)
   "Record the last selected window in FRAME."
   (unless (minibufferp)
-    (setq toki-modeline/selected-window (frame-selected-window frame))))
+    (setq toki-modeline/selected-window (frame-selected-window frame))
+    (toki-modeline/refresh-modeline)))
 
 (defvar-local toki-modeline/cache (make-hash-table :test #'eq))
 
@@ -286,8 +294,6 @@ Return nil if the dir isn't version controlled."
    '(:eval (toki-modeline-pad
             (propertize (toki-modeline-location) 'face 'toki-modeline-location-face)))
    '(:eval (toki-modeline-pad
-            (propertize (buffer-name) 'face 'toki-modeline-path-face)))
-   '(:eval (toki-modeline-pad
             (propertize (toki-modeline-vc) 'face 'toki-modeline-vc-face)))
    '(:eval (toki-modeline-pad
             (propertize (format-mode-line mode-name) 'face 'toki-modeline-mode-face)))
@@ -299,19 +305,20 @@ Return nil if the dir isn't version controlled."
    '(:eval (toki-modeline-pad
             (propertize (toki-modeline-location) 'face 'toki-modeline-location-face)))
    '(:eval (toki-modeline-pad
-            (propertize (buffer-name) 'face 'toki-modeline-path-face)))
-   '(:eval (toki-modeline-pad
             (propertize (format-mode-line mode-name) 'face 'toki-modeline-mode-face))))
   "Modeline format for inaactive window.")
 
 (defvar toki-modeline-left-format
-  (when (bound-and-true-p winum-mode)
-    (list '(:eval (toki-modeline-pad
-                   (propertize (concat " #" (format "%s" (winum-get-number)))
-                               'face 'toki-modeline-winum-face)))
-          '(:eval (toki-modeline-pad
-                   (toki-modeline-tabs)))))
+  (list " "
+        '(:eval (toki-modeline-pad (toki-modeline-winum)))
+        '(:eval (toki-modeline-pad (toki-modeline-tabs))))
   "Modeline format for displaying in the left.")
+
+(defvar toki-modeline-inactive-left-format
+  (list " "
+        '(:eval (toki-modeline-pad (toki-modeline-winum)))
+        '(:eval (toki-modeline-pad
+                 (propertize (buffer-name) 'face 'toki-modeline-path-face)))))
 
 ;; NOTE: Currently unused.
 (defvar toki-modeline-additional-format
@@ -330,7 +337,9 @@ the cache."
     (setq format
           (if (or force
                   (null (gethash (selected-window) toki-modeline/cache)))
-              (let* ((l (format-mode-line toki-modeline-left-format))
+              (let* ((l (format-mode-line (if active-window-p
+                                              toki-modeline-left-format
+                                            toki-modeline-inactive-left-format)))
                      (r (string-trim (format-mode-line
                                       (if active-window-p
                                           toki-modeline-main-format
