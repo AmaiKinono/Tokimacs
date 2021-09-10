@@ -85,7 +85,7 @@ command bound to \"C-c C-o\" by a single \"o\".  Typing any other
 key, or wait for 3 secs will both end the combo state.
 
 To use this, bind your key to \"(toki/make-combo command-name)\"."
-  `(lambda ()
+  `(defun ,(gensym (intern (concat (symbol-name command) "-combo-"))) ()
      ,(format "A combo version of `%s', see its docstring for details."
               command)
      (interactive)
