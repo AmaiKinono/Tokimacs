@@ -341,11 +341,6 @@ See the docstring of `toki-fontset-font-list' for details."
   (interactive)
   (toki-adjust-font-size -2))
 
-;; All the icons is an icon fonts utility.  Some of our packages use it.
-(use-package all-the-icons
-  :if toki-gui-p
-  :defer t)
-
 ;;; Modeline
 
 (use-package toki-modeline
