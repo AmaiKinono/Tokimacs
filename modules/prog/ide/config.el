@@ -58,6 +58,14 @@ chars.  This should be useful for CJK users."
   (toki/setq
    citre-project-root-function #'toki-project-root))
 
+(use-package citre-global
+  :straight nil
+  :trigger 'citre-mode-hook
+  :init
+  (general-def
+    :keymaps 'citre-peek-keymap
+    "M-l r" 'citre-peek-through-references))
+
 ;;; Code reading
 
 (use-package clue
@@ -102,7 +110,9 @@ chars.  This should be useful for CJK users."
   "f" '(flycheck-mode :wk "<> Flycheck Mode")
   "F" '(flycheck-list-errors :wk "List Flycheck Errors")
   "p" '(citre-ace-peek :wk "Peek Definition")
+  "r" '(citre-ace-peek-references :wk "Peek Reference")
   "u" '(citre-update-this-tags-file :wk "Update Tags File")
+  "U" '(citre-global-update-database :wk "Update Global DB")
   "C" '(clue-copy :wk "Copy Location")
   "P" '(clue-paste :wk "Paste Location"))
 
