@@ -55,11 +55,3 @@
 ;;; Yaml
 
 (use-package yaml-mode)
-
-;;; Keybinds
-
-(toki-elisp-def
-  "e" '(eval-last-sexp :wk "Eval Last Sexp")
-  "p" '(eval-print-last-sexp :wk "Eval and Print")
-  "E" '(eval-expression :wk "Eval Sexp")
-  "m" '(pp-macroexpand-last-sexp :wk "Macroexpand Last Sexp"))

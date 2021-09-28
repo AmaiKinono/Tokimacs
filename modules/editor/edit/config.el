@@ -336,28 +336,28 @@ See the docstring of `replace-string' for details."
   :defer t
   :init
   ;; The default `puni-mode-map' respects "Emacs conventions".  We don't, so
-  ;; it's better to simply rewrite it.
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "DEL") 'puni-backward-delete-char)
-    (define-key map (kbd "C-d") 'puni-forward-delete-char)
-    (define-key map (kbd "M-d") 'toki-forward-delete-word)
-    (define-key map (kbd "M-DEL") 'toki-backward-delete-word)
-    (define-key map (kbd "C-k") 'puni-kill-line)
-    (define-key map (kbd "C-u") 'puni-backward-kill-line)
-    (define-key map (kbd "C-h") 'puni-force-delete)
-    (define-key map (kbd "C-M-f") 'puni-forward-sexp)
-    (define-key map (kbd "C-M-b") 'puni-backward-sexp)
-    (define-key map (kbd "C-M-a") 'puni-beginning-of-sexp)
-    (define-key map (kbd "C-M-e") 'puni-end-of-sexp)
-    (setq puni-mode-map map))
+  ;; it's better to simply clear and rewrite it.
+  (setcdr puni-mode-map nil)
+  (general-def
+    :keymaps 'puni-mode-map
+    "DEL" 'puni-backward-delete-char
+    "C-d" 'puni-forward-delete-char
+    "M-d" 'toki-forward-delete-word
+    "M-DEL" 'toki-backward-delete-word
+    "C-k" 'puni-kill-line
+    "C-u" 'puni-backward-kill-line
+    "C-h" 'puni-force-delete
+    "C-M-f" 'puni-forward-sexp
+    "C-M-b" 'puni-backward-sexp
+    "C-M-a" 'puni-beginning-of-sexp
+    "C-M-e" 'puni-end-of-sexp)
   (puni-global-mode)
   ;; We want keys like C-k, M-DEL to be handled by the shell program.
   (add-hook 'term-mode-hook #'puni-disable-puni-mode)
+  ;;(add-hook 'prog-mode-hook #'puni-flyindent-mode)
   :config
   (toki/setq puni--debug t))
 
-;; We don't map soft delete commands defined in toki-editing for now, to test
-;; puni in daily use.
 (use-package toki-editing
   :straight nil
   :defer t)
@@ -592,6 +592,21 @@ these codes."
   "q" '(toki-quit-emacs :wk "Quit Emacs")
   "r" '(toki-reload-init-file :wk "Reload Config"))
 
+(toki-sexp-def
+  "e" '(eval-last-sexp :wk "Eval Last Sexp")
+  "p" '(eval-print-last-sexp :wk "Eval and Print")
+  "i" '(eval-expression :wk "Input and Eval Sexp")
+  "m" '(pp-macroexpand-last-sexp :wk "Macroexpand Last Sexp")
+  "s" '(puni-splice :wk "Splice")
+  "S" '(puni-squeeze :wk "Squeeze")
+  "r" `(,(toki-make-combo puni-raise) :wk "Raise")
+  "c" '(puni-convolute :wk "Convolute")
+  "C" '(puni-split :wk "Cut")
+  "," `(,(toki-make-combo puni-slurp-forward) :wk "Slurp Forward")
+  "." `(,(toki-make-combo puni-barf-forward) :wk "Barf Forward")
+  "<" `(,(toki-make-combo puni-barf-backward) :wk "Barf Backward")
+  ">" `(,(toki-make-combo puni-slurp-backward) :wk "Slurp Backward"))
+
 (toki-help-def
   "t" '(which-key-show-top-level :wk "Top Level Keybinds")
   "k" '(describe-key :wk "Key")
@@ -611,4 +626,7 @@ these codes."
 
 (toki-mark-def
   "b" '(mark-whole-buffer :wk "Buffer")
-  "h" '(diff-hl-mark-hunk :wk "Hunk"))
+  "h" '(diff-hl-mark-hunk :wk "Hunk")
+  "s" '(puni-mark-sexp-at-point :wk "Sexp Here")
+  "S" '(puni-mark-sexp-around-point :wk "Sexp Around")
+  "l" '(puni-mark-list-around-point :wk "List Around"))

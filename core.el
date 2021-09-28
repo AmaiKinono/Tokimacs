@@ -305,6 +305,8 @@ This is for site-lisps that requires external packages."
 
   (defalias 'use-package-normalize/:trigger 'use-package-normalize-symlist))
 
+(use-package general)
+
 (use-package toki-combo
   :straight nil)
 
@@ -350,9 +352,6 @@ This is for site-lisps that requires external packages."
 (defvar toki-edit-key "e"
   "For misc editing/Emacs related commands.")
 
-(defvar toki-elisp-key "x"
-  "For elisp related commands.")
-
 (defvar toki-file-key "f"
   "For file commands.")
 
@@ -368,10 +367,10 @@ This is for site-lisps that requires external packages."
 (defvar toki-navigate-key "n"
   "For navigating related commands.")
 
-(defvar toki-search-key "s"
+(defvar toki-search-key "r"
   "For search/replace commands.")
 
-(defvar toki-sexp-key "x"
+(defvar toki-sexp-key "s"
   "For sexp/pair related commands.")
 
 (defvar toki-tab-key "t"
@@ -386,98 +385,91 @@ This is for site-lisps that requires external packages."
 (defvar toki-window-key "w"
   "For window related commands.")
 
-(use-package general
-  :config
-  (general-create-definer toki-leader-def
-    :prefix toki-leader-key
-    :keymaps 'override)
+(general-create-definer toki-leader-def
+  :prefix toki-leader-key
+  :keymaps 'override)
 
-  (general-create-definer toki-2nd-leader-def
-    :prefix toki-2nd-leader-key
-    :keymaps 'override)
+(general-create-definer toki-2nd-leader-def
+  :prefix toki-2nd-leader-key
+  :keymaps 'override)
 
-  (general-create-definer toki-app-def
-    :prefix (concat toki-leader-key " " toki-app-key)
-    :keymaps 'override)
+(general-create-definer toki-app-def
+  :prefix (concat toki-leader-key " " toki-app-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-buffer-def
-    :prefix (concat toki-leader-key " " toki-buffer-key)
-    :keymaps 'override)
+(general-create-definer toki-buffer-def
+  :prefix (concat toki-leader-key " " toki-buffer-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-code-def
-    :prefix (concat toki-leader-key " " toki-code-key)
-    :keymaps 'override)
+(general-create-definer toki-code-def
+  :prefix (concat toki-leader-key " " toki-code-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-edit-def
-    :prefix (concat toki-leader-key " " toki-edit-key)
-    :keymaps 'override)
+(general-create-definer toki-edit-def
+  :prefix (concat toki-leader-key " " toki-edit-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-elisp-def
-    :prefix (concat toki-leader-key " " toki-elisp-key)
-    :keymaps 'override)
+(general-create-definer toki-file-def
+  :prefix (concat toki-leader-key " " toki-file-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-file-def
-    :prefix (concat toki-leader-key " " toki-file-key)
-    :keymaps 'override)
+(general-create-definer toki-help-def
+  :prefix (concat toki-leader-key " " toki-help-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-help-def
-    :prefix (concat toki-leader-key " " toki-help-key)
-    :keymaps 'override)
+(general-create-definer toki-local-def
+  :prefix (concat toki-leader-key " " toki-local-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-local-def
-    :prefix (concat toki-leader-key " " toki-local-key)
-    :keymaps 'override)
+(general-create-definer toki-mark-def
+  :prefix (concat toki-leader-key " " toki-mark-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-mark-def
-    :prefix (concat toki-leader-key " " toki-mark-key)
-    :keymaps 'override)
+(general-create-definer toki-navigate-def
+  :prefix (concat toki-leader-key " " toki-navigate-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-navigate-def
-    :prefix (concat toki-leader-key " " toki-navigate-key)
-    :keymaps 'override)
+(general-create-definer toki-search-def
+  :prefix (concat toki-leader-key " " toki-search-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-search-def
-    :prefix (concat toki-leader-key " " toki-search-key)
-    :keymaps 'override)
+(general-create-definer toki-sexp-def
+  :prefix (concat toki-leader-key " " toki-sexp-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-sexp-def
-    :prefix (concat toki-leader-key " " toki-sexp-key)
-    :keymaps 'override)
+(general-create-definer toki-tab-def
+  :prefix (concat toki-leader-key " " toki-tab-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-tab-def
-    :prefix (concat toki-leader-key " " toki-tab-key)
-    :keymaps 'override)
+(general-create-definer toki-ui-def
+  :prefix (concat toki-leader-key " " toki-ui-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-ui-def
-    :prefix (concat toki-leader-key " " toki-ui-key)
-    :keymaps 'override)
+(general-create-definer toki-vc-def
+  :prefix (concat toki-leader-key " " toki-vc-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-vc-def
-    :prefix (concat toki-leader-key " " toki-vc-key)
-    :keymaps 'override)
+(general-create-definer toki-window-def
+  :prefix (concat toki-leader-key " " toki-window-key)
+  :keymaps 'override)
 
-  (general-create-definer toki-window-def
-    :prefix (concat toki-leader-key " " toki-window-key)
-    :keymaps 'override)
-
-  (toki-leader-def
-    :start-maps t
-    toki-app-key '(:wk "App/Tool")
-    toki-buffer-key '(:wk "Buffer")
-    toki-code-key '(:wk "Code")
-    toki-edit-key '(:wk "Edit/Emacs")
-    toki-elisp-key '(:wk "Elisp/Extra")
-    toki-file-key '(:wk "File")
-    toki-help-key '(:wk "Help")
-    toki-local-key '(:wk "Local")
-    toki-mark-key '(:wk "Mark")
-    toki-navigate-key '(:wk "Navigate")
-    toki-search-key '(:wk "Search/Replace")
-    toki-sexp-key '(:wk "Sexp")
-    toki-tab-key '(:wk "Tab")
-    toki-ui-key '(:wk "UI")
-    toki-vc-key '(:wk "Version Control")
-    toki-window-key '(:wk "Window")))
+(toki-leader-def
+  :start-maps t
+  toki-app-key '(:wk "App/Tool")
+  toki-buffer-key '(:wk "Buffer")
+  toki-code-key '(:wk "Code")
+  toki-edit-key '(:wk "Edit/Emacs")
+  toki-file-key '(:wk "File")
+  toki-help-key '(:wk "Help")
+  toki-local-key '(:wk "Local")
+  toki-mark-key '(:wk "Mark")
+  toki-navigate-key '(:wk "Navigate")
+  toki-search-key '(:wk "Search/Replace")
+  toki-sexp-key '(:wk "Sexp")
+  toki-tab-key '(:wk "Tab")
+  toki-ui-key '(:wk "UI")
+  toki-vc-key '(:wk "Version Control")
+  toki-window-key '(:wk "Window"))
 
 (general-def
   :keymaps 'override
@@ -486,6 +478,7 @@ This is for site-lisps that requires external packages."
 (toki-edit-def
   "u" '(toki-update-package :wk "Update Package")
   "U" '(toki-update-all :wk "Update All Packages"))
+
 (use-package which-key
   :hook (after-init . which-key-mode)
   :config
