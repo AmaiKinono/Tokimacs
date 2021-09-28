@@ -98,19 +98,17 @@ Scroll 1 line if ARG is nil."
 ;;;###autoload
 (defun toki-forward-word ()
   "A finer version of `forward-word'.
-If there's *only one* space, tab, '-' or '_' between point and
-next word, move after it.  Then jump forward by a block.  A block
-is a continuous region with the same syntax, like a word, a bunch
-of whitespaces/punctuations, etc.
+If there's *only one* non-word char between point and next word,
+move after it.  Then jump forward by a block.  A block is a
+continuous region with the same syntax, like a word, a bunch of
+whitespaces/punctuations, etc.
 
 This doesn't fly over most punctuations, while `forward-word'
 does."
   (interactive)
   (toki/eob-error)
-  (unless (> (point) (- (point-max) 2))
-    (when (and (member (char-after) '(?\s ?\t ?- ?_))
-               (eq (puni--syntax-char-after (1+ (point))) ?w))
-      (forward-char)))
+  (when (eq (puni--syntax-char-after (1+ (point))) ?w)
+    (forward-char))
   (toki/forward-block))
 
 ;;;###autoload
@@ -123,20 +121,11 @@ does."
 
 ;;;###autoload
 (defun toki-backward-word ()
-  "A finer version of `backward-word'.
-If there's *only one* space, tab, '-' or '_' between point and
-previous word, move before it.  Then jump back by a block.  A
-block is a continuous region with the same syntax, like a word, a
-bunch of whitespaces/punctuations, etc.
-
-This doesn't fly over most punctuations, while `backward-word'
-does."
+  "Backward version of `toki-forward-word'."
   (interactive)
   (toki/bob-error)
-  (unless (< (point) (+ (point-min) 2))
-    (when (and (member (char-before) '(?\s ?\t ?- ?_))
-               (eq (puni--syntax-char-after (- (point) 2)) ?w))
-      (backward-char)))
+  (when (eq (puni--syntax-char-after (- (point) 2)) ?w)
+    (backward-char))
   (toki/backward-block))
 
 ;;;###autoload
