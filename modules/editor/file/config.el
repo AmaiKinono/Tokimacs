@@ -199,7 +199,7 @@ more than 2, it will ask for the number of the window."
   "c" '(toki-copy-buf-to-window :wk "Copy to Window"))
 
 (toki-tab-def
-  "b" `(,(toki/make-combo toki-tabs-previous) :wk "Prev Tab")
-  "f" `(,(toki/make-combo toki-tabs-next) :wk "Next Tab")
+  "b" `(,(toki-make-combo toki-tabs-previous) :wk "Prev Tab")
+  "f" `(,(toki-make-combo toki-tabs-next) :wk "Next Tab")
   "k" '(toki-tabs-kill-invisible-buffers-in-group :wk "Keep Visible in Group")
   "K" '(toki-tabs-kill-buffers-in-group :wk "Kill Buffer Group"))

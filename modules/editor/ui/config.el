@@ -380,7 +380,7 @@ See the docstring of `toki-fontset-font-list' for details."
 (toki-ui-def
   "f" '(toggle-frame-fullscreen :wk "<> Fullscreen")
   "m" '(toggle-frame-maximized :wk "<> Maximize")
-  "t" `(,(toki/make-combo toki-switch-theme) :wk "Switch Theme")
+  "t" `(,(toki-make-combo toki-switch-theme) :wk "Switch Theme")
   "T" '(toki-load-theme :wk "Load Theme")
-  "=" `(,(toki/make-combo toki-increase-font-size) :wk "Increase Font Size")
-  "-" `(,(toki/make-combo toki-decrease-font-size) :wk "Decrease Font Size"))
+  "=" `(,(toki-make-combo toki-increase-font-size) :wk "Increase Font Size")
+  "-" `(,(toki-make-combo toki-decrease-font-size) :wk "Decrease Font Size"))
