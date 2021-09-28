@@ -396,12 +396,6 @@ See the docstring of `replace-string' for details."
 
 ;;; Misc packages
 
-(use-package avy
-  :defer t
-  :config
-  (toki/setq
-   avy-all-windows nil))
-
 (use-package editorconfig
   :trigger find-file-noselect
   :config
@@ -559,9 +553,7 @@ these codes."
   "M-m" 'set-mark-command
   ;; Search
   "C-/" 'isearch-forward-regexp
-  ;; Avy
-  "C-'" 'avy-goto-line
-  "C-\"" 'avy-goto-char-2)
+  "C-'" 'isearch-backward-regexp)
 
 (toki-leader-def
   "i" '(universal-argument :wk "Universal Arg")
