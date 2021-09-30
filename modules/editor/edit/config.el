@@ -326,7 +326,23 @@ See the docstring of `replace-string' for details."
         (goto-char (point-min))
         (call-interactively #'replace-string)))))
 
-;; TODO: grep integration
+;;;; Grep
+
+(use-package wgrep
+  :defer t
+  :init
+  (toki-local-def
+    :keymaps 'grep-mode-map
+    "e" '(wgrep-change-to-wgrep-mode :wk "Edit"))
+  :config
+  (toki/setq wgrep-auto-save-buffer t)
+  (toki-local-def
+    :keymaps 'wgrep-mode-map
+    "e" '(wgrep-exit :wk "Exit")
+    "c" '(wgrep-finish-edit :wk "Commit Changes")
+    "d" '(wgrep-mark-deletion :wk "Delete This Line")
+    "r" '(wgrep-remove-change :wk "Remove Change in Region")
+    "R" '(wgrep-remove-all-change :wk "Remove All Changes")))
 
 ;; TODO: grep integration
 
