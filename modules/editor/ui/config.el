@@ -355,6 +355,8 @@ See the docstring of `toki-fontset-font-list' for details."
   (let ((bg (face-attribute 'default :background)))
     (set-face-attribute 'mode-line nil
                         :background bg :height 0.9)
+    (set-face-attribute 'mode-line-active nil
+                        :inherit 'mode-line)
     (set-face-attribute 'mode-line-inactive nil
                         :background bg :height 0.9
                         :bold t :inherit 'shadow)))
