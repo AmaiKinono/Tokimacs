@@ -158,13 +158,15 @@ This doesn't affect Emacs in terminal.")
  mouse-wheel-progressive-speed nil
  cursor-type '(bar . 3)
  word-wrap t
- word-wrap-by-category t)
+ word-wrap-by-category t
+ use-short-answers t
+ ;; This actually works also for occur/grep buffers.
+ next-error-message-highlight t
+ redisplay-skip-fontification-on-input t)
 
 (fset 'display-startup-echo-area-message 'ignore)
 
 (blink-cursor-mode -1)
-;; Don't ask us to input "yes" or "no".  Use "y" or "n" instead.
-(defalias 'yes-or-no-p 'y-or-n-p)
 
 (set-frame-parameter nil 'alpha
                      (list toki-active-frame-alpha toki-inactive-frame-alpha))

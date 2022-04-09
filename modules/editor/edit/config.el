@@ -15,7 +15,9 @@
  tab-width 4
  truncate-partial-width-windows nil
  sentence-end-double-space nil
- require-final-newline t)
+ require-final-newline t
+ describe-bindings-outline t
+ create-lockfiles nil)
 
 ;;; Undo & Redo
 
