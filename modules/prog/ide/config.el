@@ -22,6 +22,8 @@
   :hook (pre-command . global-company-mode)
   :config
   (toki/setq
+   ;; TODO: Sometimes I really need a completing-read UI for dabbrev.  Popup
+   ;; completion actually doesn't help much.
    company-backends '(company-dabbrev-code company-dabbrev)
    company-minimum-prefix-length 2
    company-dabbrev-code-everywhere t
