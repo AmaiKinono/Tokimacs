@@ -158,27 +158,47 @@ It's updated by `toki-tabs/update-buffer-list'.")
 Minibuffer doesn't count.  This is updated by
 `toki-tabs/update-buffer-list'.")
 
-(defvar toki-tabs/inhibit-resort nil
-  "Non-nil means don't resort `toki-tabs/sorted-buffer-list'.")
+(defvar toki-tabs/buffer-list-changed nil
+  "Whether buffer list has changed since last `toki-tabs/update-buffer-list'.")
+
+(defun toki-tabs/buffer-list-changed ()
+  "Notify toki-tabs that buffer list is updated."
+  (setq toki-tabs/buffer-list-changed t))
+
+(defvar toki-tabs/inhibit-resort-commands
+  '(toki-tabs-previous toki-tabs-next)
+  "Commands that shouldn't trigger resort.")
 
 (defun toki-tabs/update-buffer-list ()
   "Update internal data when appropriate."
   (unless (window-minibuffer-p)
-    (let ((current-buffer (current-buffer)))
-      ;; We don't update when the current buffer is not changed, and non of the
-      ;; non-hidden buffers is killed.
-      (unless (and (eq current-buffer toki-tabs/last-active-buffer)
-                   (cl-every #'buffer-live-p
-                             toki-tabs/sorted-buffer-list))
-        (unless toki-tabs/inhibit-resort
-          (let ((bufs (buffer-list)))
-            (setq bufs (cl-remove-if-not #'toki-tabs/buffer-group bufs))
-            (setq bufs (sort bufs #'toki-tabs/buffer-freq-higher-p))
-            (setq toki-tabs/sorted-buffer-list bufs)))
+    (let ((current-buffer (current-buffer))
+          non-hidden-bufs)
+      ;; We don't update when the buffer list is not changed, or the current
+      ;; buffer is not changed & no non-hidden buffers is killed/added.
+      (unless (or (not toki-tabs/buffer-list-changed)
+                  (and (eq current-buffer toki-tabs/last-active-buffer)
+                       (cl-every #'buffer-live-p
+                                 toki-tabs/sorted-buffer-list)
+                       (progn (setq non-hidden-bufs
+                                    (cl-remove-if-not #'toki-tabs/buffer-group
+                                                      (buffer-list)))
+                              (eq (length non-hidden-bufs)
+                                  (length toki-tabs/sorted-buffer-list)))))
+        (unless (member this-command toki-tabs/inhibit-resort-commands)
+          (setq non-hidden-bufs (or non-hidden-bufs
+                                    (cl-remove-if-not #'toki-tabs/buffer-group
+                                                      (buffer-list))))
+          (setq toki-tabs/sorted-buffer-list
+                (sort non-hidden-bufs #'toki-tabs/buffer-freq-higher-p)))
         (run-hooks 'toki-tabs-update-hook)
+        (setq toki-tabs/buffer-list-changed nil)
         (setq toki-tabs/last-active-buffer (current-buffer))))))
 
 ;;;;; UI
+
+(defvar toki-tabs/update-buffer-list-timer nil
+  "Idle timer to update buffer.")
 
 (defun toki-tabs-visible-tabs-and-remain-num ()
   "Return the visible tabs and number of remaining tabs in a cons cell.
@@ -264,8 +284,7 @@ switch to the last tab."
   (interactive)
   (let* ((buf (current-buffer))
          (tabs (toki-tabs-visible-tabs))
-         (idx (cl-position buf tabs :test #'eq))
-         (toki-tabs/inhibit-resort t))
+         (idx (cl-position buf tabs :test #'eq)))
     (cond
      ((or (null idx) (eq idx 0))
       (switch-to-buffer (car (last tabs))))
@@ -279,8 +298,7 @@ switch to the first tab."
   (interactive)
   (let* ((buf (current-buffer))
          (tabs (toki-tabs-visible-tabs))
-         (idx (cl-position buf tabs :test #'eq))
-         (toki-tabs/inhibit-resort t))
+         (idx (cl-position buf tabs :test #'eq)))
     (cond
      ((or (null idx) (eq idx (1- (length tabs))))
       (switch-to-buffer (car tabs)))
@@ -338,12 +356,22 @@ plug-in an UI for tabs."
   (if toki-tabs-mode
       (progn
         (toki-tabs-start-count-freq)
+        (toki-tabs/buffer-list-changed)
         (toki-tabs/update-buffer-list)
         (add-hook 'buffer-list-update-hook
-                  #'toki-tabs/update-buffer-list))
+                  #'toki-tabs/buffer-list-changed)
+        (add-hook 'post-command-hook
+                  #'toki-tabs/update-buffer-list)
+        ;; We do this in case buffer list is changed asynchronously.
+        (setq toki-tabs/update-buffer-list-timer
+              (run-with-idle-timer 0.1 'repeat #'toki-tabs/update-buffer-list)))
     (toki-tabs-stop-count-freq)
     (remove-hook 'buffer-list-update-hook
-                 #'toki-tabs/update-buffer-list)))
+                 #'toki-tabs/buffer-list-changed)
+    (remove-hook 'post-command-hook
+                 #'toki-tabs/update-buffer-list)
+    (cancel-timer toki-tabs/update-buffer-list-timer)
+    (setq toki-tabs/update-buffer-list-timer nil)))
 
 (provide 'toki-tabs)
 
