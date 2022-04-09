@@ -25,8 +25,7 @@
 
 (defvar toki-tabs-project-root-function
   (lambda ()
-    (when-let ((project (project-current nil)))
-      (expand-file-name (cdr project))))
+    (when-let ((project (project-current nil))) (cdr project)))
   "A function that returns project root for current buffer.")
 
 (defvar toki-tabs-separator "|"
@@ -84,10 +83,13 @@ When BUFFER is nil, use current buffer."
                '("*Backtrace" "*scratch" "*Faces" "*Messages"
                  "*Customize"))
       "*Common*")
-     ((setq group (or (buffer-local-value 'toki-tabs/buffer-group buffer)
-                      (with-current-buffer buffer
-                        (setq toki-tabs/buffer-group
-                              (funcall toki-tabs-project-root-function)))))
+     ((setq group
+            (or (buffer-local-value 'toki-tabs/buffer-group buffer)
+                (with-current-buffer buffer
+                  (setq toki-tabs/buffer-group
+                        (when-let ((project
+                                    (funcall toki-tabs-project-root-function)))
+                          (expand-file-name project))))))
       group)
      ((eq (aref name 0) ?*) "*Common*")
      (t "*Others*"))))
