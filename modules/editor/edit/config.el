@@ -19,17 +19,6 @@
 
 ;;; Undo & Redo
 
-;; Undo Fu is a wrapper for Emacs built-in undo system, offering undo and redo
-;; commands that we would expect in a normal editor or word-processor.
-
-;; AFAIK, undo-fu wraps emacs built-in `undo-only' and `undo-redo' (in Emacs
-;; 28) commands.  So we shouldn't need it after we have Emacs 28.
-(use-package undo-fu
-  :defer t
-  :config
-  (toki/setq
-   undo-fu-ignore-keyboard-quit t))
-
 ;; undo-propose gives us a temporary buffer where we can use the built-in undo
 ;; command to go back to any previous state.  Then we can apply the changes as
 ;; only one edit event, making it easier to undo/redo later.
@@ -541,8 +530,8 @@ these codes."
 
 (general-def
   ;; Undo/Redo
-  "C-z" 'undo-fu-only-undo
-  "C-S-z" 'undo-fu-only-redo
+  "C-z" 'undo-only
+  "C-S-z" 'undo-redo
   ;; Word
   "M-f" 'toki-forward-word
   "M-b" 'toki-backward-word

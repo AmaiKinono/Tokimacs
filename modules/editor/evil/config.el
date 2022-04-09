@@ -148,8 +148,8 @@ back afterwards."
 
 (general-def
   :states '(insert emacs)
-  "C-z" 'undo-fu-only-undo
-  "C-S-z" 'undo-fu-only-redo)
+  "C-z" 'undo-only
+  "C-S-z" 'undo-redo)
 
 (general-def
   :states 'motion
