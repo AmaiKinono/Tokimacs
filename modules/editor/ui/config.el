@@ -156,7 +156,9 @@ This doesn't affect Emacs in terminal.")
  mouse-wheel-scroll-amount '(2 ((shift) . 1))
  ;; Don't change the scrolling amount by the mouse wheel speed.
  mouse-wheel-progressive-speed nil
- cursor-type '(bar . 3))
+ cursor-type '(bar . 3)
+ word-wrap t
+ word-wrap-by-category t)
 
 (fset 'display-startup-echo-area-message 'ignore)
 
