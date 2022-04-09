@@ -7,7 +7,7 @@
   (add-hook 'find-file-hook #'facets-auto-enable-facets-mode)
   :config
   (toki-local-def
-    :keymap 'facets-mode-map
+    :keymaps 'facets-mode-map
     "i" '(facets-insert-or-update-id :wk "Insert ID")
     "l" '(facets-insert-link :wk "Insert Link")
     "L" '(facets-list-links :wk "List Links")
