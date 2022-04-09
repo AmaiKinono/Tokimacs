@@ -609,11 +609,15 @@ these codes."
 (toki-help-def
   "t" '(which-key-show-top-level :wk "Top Level Keybinds")
   "k" '(describe-key :wk "Key")
+  "K" '(describe-keymap :wk "Keymap")
   "p" '(describe-package :wk "Package")
   "c" '(describe-char :wk "Char at Point")
   "f" '(describe-function :wk "Function")
   "F" '(describe-face :wk "Face")
-  "v" '(describe-variable :wk "Variable"))
+  "v" '(describe-variable :wk "Variable")
+  "e" '(shortdoc-display-group :wk "Elisp Functions Cheatsheet")
+  "i" '(info-display-manual :wk "Info Manual")
+  "h" '(help-for-help :wk "Help for Help"))
 
 (toki-navigate-def
   "i" '(imenu :wk "Imenu")
