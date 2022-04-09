@@ -3,6 +3,7 @@ modules/private
 straight/
 var/
 etc/
+eln-cache/
 tramp
 .*
 !.gitignore

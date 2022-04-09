@@ -13,6 +13,7 @@
 
 ;;;; Libraries
 
+(require 'toki-common)
 (toki-declare-ext-pkg base16-theme)
 (require 'base16-theme)
 

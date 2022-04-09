@@ -208,13 +208,7 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
   (require 'autoload)
   (require 'bytecomp))
 
-(defmacro toki-declare-ext-pkg (feature)
-  "Require a feature from external packages.
-This is for site-lisps that requires external packages."
-  `(eval-when-compile
-     (add-to-list 'load-path ,(concat user-emacs-directory "straight/build/"
-                                      (symbol-name feature)))))
-
+;; TODO: recompile when Emacs version changes
 (let* (;; Dir & files
        (site-lisp-dir (concat user-emacs-directory "site-lisp/"))
        (build-dir (progn (make-directory (concat site-lisp-dir ".build/") t)
@@ -276,7 +270,9 @@ This is for site-lisps that requires external packages."
       (update-directory-autoloads build-dir)
       (when-let ((buf (find-buffer-visiting generated-autoload-file)))
         (kill-buffer buf))
-      (byte-compile-file (concat build-dir "autoloads.el")))
+      (byte-compile-file (concat build-dir "autoloads.el"))
+      (when (native-comp-available-p)
+        (native-compile-async (list build-dir))))
     (add-to-list 'custom-theme-load-path build-dir)
     ;; Load autoload file
     (load (concat build-dir "autoloads") 'noerror 'nomessage)))

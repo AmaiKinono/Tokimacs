@@ -13,6 +13,7 @@
 
 ;;;; Libraries
 
+(require 'toki-common)
 (toki-declare-ext-pkg consult)
 (require 'consult)
 
@@ -67,7 +68,7 @@ See `consult-find-command'.")
                  (not (string-match (rx (or line-start "/")
                                         (or ".git" "straight"
                                             "auto-save-list" "var"
-                                            ".build"))
+                                            ".build" "eln-cache"))
                                     dir))))
          (files (directory-files-recursively user-emacs-directory ""
                                              nil pred))
