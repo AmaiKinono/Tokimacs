@@ -48,5 +48,35 @@
   :config
   (marginalia-mode))
 
+(use-package embark
+  :trigger pre-command-hook
+  :config
+  (defun embark-which-key-indicator ()
+    "An embark indicator that displays keymaps using which-key.
+The which-key help message will show the type and value of the
+current target followed by an ellipsis if there are further
+targets."
+    (lambda (&optional keymap targets prefix)
+      (if (null keymap)
+          (kill-buffer which-key--buffer)
+        (which-key--show-keymap
+         (if (eq (caar targets) 'embark-become)
+             "Become"
+           (format "Act on %s '%s'%s"
+                   (caar targets)
+                   (embark--truncate-target (cdar targets))
+                   (if (cdr targets) "…" "")))
+         (if prefix (lookup-key keymap prefix) keymap)
+         nil nil t))))
+  (toki/setq embark-indicator #'embark-which-key-indicator))
+
+(use-package embark-consult
+  :after (embark consult))
+
+;;; Keybinds
+
 (toki-leader-def
   "SPC" '(execute-extended-command :wk "M-x"))
+
+(general-def
+  "C-." 'embark-act)
