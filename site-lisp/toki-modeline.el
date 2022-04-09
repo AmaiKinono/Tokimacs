@@ -114,7 +114,6 @@ This is used in the path info."
 (defun toki-modeline/right-align-space (string)
   "Return a propertized space that aligns STRING to the right."
   (setq string (replace-regexp-in-string "%%" "%" string))
-  (setq string (propertize string 'face 'mode-line))
   (let ((len (string-width string)))
     (if (display-graphic-p)
         (let ((height (face-attribute 'mode-line :height))
