@@ -1,0 +1,8 @@
+auto-save-list/
+modules/private
+straight/
+var/
+etc/
+tramp
+.*
+!.gitignore
