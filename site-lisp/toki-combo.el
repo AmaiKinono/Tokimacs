@@ -52,10 +52,10 @@ To use this, bind your key to \"(toki-make-combo command-name)\"."
                          (setq toki/combo-key-timer (run-with-timer minibuffer-message-timeout
                                                                     nil (set-transient-map map t)))
                          (call-interactively #',command)
+                         (setq this-command (quote ,command))
                          (message "Press %s to run %s again"
                                   (key-description key-event) ',command))))
        (define-key map key-event combo-cmd)
-       (setq this-command (quote ,command))
        (call-interactively combo-cmd))))
 
 (provide 'toki-combo)
