@@ -24,6 +24,7 @@
     "prog/ide"         ;; IDE
     "prog/lang"        ;; Language supports
     "app/term"         ;; Terminal emulator
+    "app/facets"       ;; My zettlekasten
     ))
 
 (dolist (module toki-modules)
