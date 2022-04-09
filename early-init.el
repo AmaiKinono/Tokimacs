@@ -1,4 +1,4 @@
-;; -*- lexical-binding: t -*-
+;; -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2021 Hao Wang
 ;; License: GPL v3, or (at your option) any later version
