@@ -55,6 +55,7 @@ To use this, bind your key to \"(toki-make-combo command-name)\"."
                          (message "Press %s to run %s again"
                                   (key-description key-event) ',command))))
        (define-key map key-event combo-cmd)
+       (setq this-command (quote ,command))
        (call-interactively combo-cmd))))
 
 (provide 'toki-combo)
