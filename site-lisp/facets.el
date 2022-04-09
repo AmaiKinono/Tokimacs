@@ -385,7 +385,7 @@ The command should be run at `facets-directory'."
                            (_ (error "Invalid OUTPUT_KIND"))))
        (setq regexp-args (facets/gnugrep-pattern-arg pattern)))
       (_ (error "Invalid grep program kind")))
-    `(,@common-args ,@glob-args ,@output-args ,@regexp-args ".")))
+    `(,@common-args ,@glob-args ,@output-args ,@regexp-args)))
 
 (defun facets-grep-find-source-cmd (id)
   "Build grep command for finding sources of ID.
