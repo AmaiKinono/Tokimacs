@@ -117,7 +117,8 @@ blinking.  If it's nil, blink only once."
     (if color
         (set-face-attribute 'mode-line nil :background color)
       (set-face-attribute 'mode-line nil :background toki/mode-line-bg-orig)
-      (cancel-timer toki/blink-mode-line-timer))))
+      (cancel-timer toki/blink-mode-line-timer)
+      (setq toki/blink-mode-line-timer nil))))
 
 ;;;; Main entry point
 
