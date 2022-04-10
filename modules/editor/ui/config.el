@@ -77,6 +77,7 @@ The first element is used as the default theme.")
    base16-distinct-fringe-background nil)
   :defer t
   :config
+  ;; TODO: change wgrep-face.  It's awful...
   (define-advice base16-theme-define (:around (fn theme-name theme-colors) fix)
     (base16-set-faces
      theme-name theme-colors
