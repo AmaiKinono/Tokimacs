@@ -93,6 +93,13 @@
      :foreground "#00ced1" :bold t))
   "Face for evil state.")
 
+(defface toki-modeline-view-mode-face
+  '((((background light))
+     :foreground "#00aca9" :bold t)
+    (t
+     :foreground "#00ced1" :bold t))
+  "Face for view mode indicator.")
+
 ;;;; Helpers
 
 (defun toki-modeline-pad (str)
@@ -267,6 +274,12 @@ Return nil if the dir isn't version controlled."
       (toki-tabs-string)
     ""))
 
+(defun toki-modeline-view-mode ()
+  "Indicator of view-mode."
+  (if view-mode
+      (propertize "<V>" 'face 'toki-modeline-view-mode-face)
+    ""))
+
 ;;;; Internals
 
 (defvar toki-modeline/selected-window nil)
@@ -296,7 +309,8 @@ Return nil if the dir isn't version controlled."
             (propertize (toki-modeline-vc) 'face 'toki-modeline-vc-face)))
    '(:eval (toki-modeline-pad
             (propertize (format-mode-line mode-name) 'face 'toki-modeline-mode-face)))
-   '(:eval (propertize (toki-modeline-evil) 'face 'toki-modeline-evil-face)))
+   '(:eval (propertize (toki-modeline-evil) 'face 'toki-modeline-evil-face))
+   '(:eval (toki-modeline-pad (toki-modeline-view-mode))))
   "Modeline format for active window.")
 
 (defvar toki-modeline-inactive-format

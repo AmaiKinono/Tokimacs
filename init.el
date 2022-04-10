@@ -20,7 +20,8 @@
     "editor/ui"        ;; Tidy & beautiful UI
     "editor/file"      ;; File management
     "editor/edit"      ;; Fine & structural editing
-    "editor/evil"      ;; Vim emulator
+    ;;"editor/evil"    ;; Vim emulator
+    "editor/view-mode" ;; View mode that resembles vi normal mode (kind of)
     "prog/ide"         ;; IDE
     "prog/lang"        ;; Language supports
     "app/term"         ;; Terminal emulator
