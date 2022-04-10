@@ -589,7 +589,9 @@ these codes."
   "Cr" '(revert-buffer-with-coding-system :wk "Reopen With")
   "Cc" '(set-buffer-file-coding-system :wk "Convert To")
   "q" '(toki-quit-emacs :wk "Quit Emacs")
-  "r" '(toki-reload-init-file :wk "Reload Config"))
+  "r" '(toki-reload-init-file :wk "Reload Config")
+  "<" `(,(toki-make-combo indent-rigidly-left) :wk "Indent Left")
+  ">" `(,(toki-make-combo indent-rigidly-right) :wk "Indent Right"))
 
 (toki-sexp-def
   "e" '(eval-last-sexp :wk "Eval Last Sexp")
