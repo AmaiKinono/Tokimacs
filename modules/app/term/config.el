@@ -15,13 +15,13 @@
 
   (toki-local-def
     :keymaps 'term-raw-map
-    "b" '(toki-term-browse-mode :wk "Browse Mode"))
+    "b" '("Browse Mode" . toki-term-browse-mode))
   (general-def
     :keymaps 'term-raw-map
     "C-S-v" 'toki-term-yank)
   (toki-local-def
     :keymaps 'toki-term-browse-mode-map
-    "c" '(term-char-mode :wk "Char Mode")))
+    "c" '("Char Mode" . term-char-mode)))
 
 (toki-app-def
   "t" '(toki-term :wk "Terminal"))

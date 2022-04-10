@@ -8,11 +8,11 @@
   :config
   (toki-local-def
     :keymaps 'facets-mode-map
-    "i" '(facets-insert-or-update-id :wk "Insert ID")
-    "l" '(facets-insert-link :wk "Insert Link")
-    "L" '(facets-list-links :wk "List Links")
-    "c" '(facets-copy-id :wk "Copy ID")
-    "b" '(facets-jump-back :wk "Jump Back")))
+    "i" '("Insert ID" . facets-insert-or-update-id)
+    "l" '("Insert Link" . facets-insert-link)
+    "L" '("List Links" . facets-list-links)
+    "c" '("Copy ID" . facets-copy-id)
+    "b" '("Jump Back" . facets-jump-back)))
 
 (toki-app-def
   "f" '(facets-find-file :wk "Facets"))

@@ -30,10 +30,10 @@
   (general-def 'undo-propose-mode-map
     "C-z" 'undo)
   (toki-local-def 'undo-propose-mode-map
-    "c" '(undo-propose-squash-commit :wk "Squash and Commit")
-    "C" '(undo-propose-commit :wk "Commit")
-    "d" '(undo-propose-diff :wk "Diff")
-    "q" '(undo-propose-cancel :wk "Quit")))
+    "c" '("Squash and Commit" . undo-propose-squash-commit)
+    "C" '("Commit" . undo-propose-commit)
+    "d" '("Diff" . undo-propose-diff)
+    "q" '("Quit" . undo-propose-cancel)))
 
 ;;; Search & Replace
 
@@ -64,15 +64,15 @@
     "C-." 'toki-search-insert-.*)
   (toki-local-def
     :keymaps 'isearch-mb-minibuffer-map
-    "r" '(isearch-query-replace :wk "Replace")
-    "C-j" '(newline :wk "[Newline]")
-    "." '(toki-search-insert-.* :wk "[.*]")
-    "a" '(toki-search-insert-anychar :wk "[Anychar]")
-    "g" '(toki-search-insert-group :wk "(Group)")
-    "w" '(toki-search-insert-word-boundary :wk "(Word Bounds)")
-    "s" '(toki-search-insert-symbol-boundary :wk "(Symbol Bounds)")
-    "C" '(isearch-toggle-case-fold :wk "<> Case Fold")
-    "R" '(isearch-toggle-regexp :wk "<> Regexp Search"))
+    "r" '("Replace" . isearch-query-replace)
+    "C-j" '("[Newline]" . newline)
+    "." '("[.*]" . toki-search-insert-.*)
+    "a" '("[Anychar]" . toki-search-insert-anychar)
+    "g" '("(Group)" . toki-search-insert-group)
+    "w" '("(Word Bounds)" . toki-search-insert-word-boundary)
+    "s" '("(Symbol Bounds)" . toki-search-insert-symbol-boundary)
+    "C" '("<> Case Fold" . isearch-toggle-case-fold)
+    "R" '("<> Regexp Search" . isearch-toggle-regexp))
   (define-advice isearch-mb--update-prompt (:around (fn &rest args) show-case-fold-info)
     "Show case fold info in the prompt."
     (cl-letf* ((isearch--describe-regexp-mode-orig
@@ -185,11 +185,11 @@
 
 (toki-local-def
   :keymaps 'toki-replace-map
-  "m" '(toki-replace-insert-whole-match :wk "[Whole Match]")
-  "c" '(toki-replace-insert-counter :wk "[Counter]")
-  "i" '(toki-replace-insert-user-input :wk "[User Input]")
-  "l" '(toki-replace-insert-lisp-expression :wk "[Lisp]")
-  "C" '(toki-replace-toggle-soft-case :wk "<> Soft Case"))
+  "m" '("[Whole Match]" . toki-replace-insert-whole-match)
+  "c" '("[Counter]" . toki-replace-insert-counter)
+  "i" '("[User Input]" . toki-replace-insert-user-input)
+  "l" '("[Lisp]" . toki-replace-insert-lisp-expression)
+  "C" '("<> Soft Case" . toki-replace-toggle-soft-case))
 
 (defvar toki/replace-ol nil)
 
@@ -324,16 +324,16 @@ See the docstring of `replace-string' for details."
   :init
   (toki-local-def
     :keymaps 'grep-mode-map
-    "e" '(wgrep-change-to-wgrep-mode :wk "Edit"))
+    "e" '("Edit" . wgrep-change-to-wgrep-mode))
   :config
   (toki/setq wgrep-auto-save-buffer t)
   (toki-local-def
     :keymaps 'wgrep-mode-map
-    "e" '(wgrep-exit :wk "Exit")
-    "c" '(wgrep-finish-edit :wk "Commit Changes")
-    "d" '(wgrep-mark-deletion :wk "Delete This Line")
-    "r" '(wgrep-remove-change :wk "Remove Change in Region")
-    "R" '(wgrep-remove-all-change :wk "Remove All Changes")))
+    "e" '("Exit" . wgrep-exit)
+    "c" '("Commit Changes" . wgrep-finish-edit)
+    "d" '("Delete This Line" . wgrep-mark-deletion)
+    "r" '("Remove Change in Region" . wgrep-remove-change)
+    "R" '("Remove All Changes" . wgrep-remove-all-change)))
 
 ;; TODO: grep integration
 
