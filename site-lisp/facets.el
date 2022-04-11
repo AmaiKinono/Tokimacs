@@ -21,12 +21,28 @@
 
 ;;;; User options
 
+(defvar facets-directory "~/facets/"
+  "The directory for facets.")
+
 (defvar facets-id-function #'facets/timestamp
   "A function that returns a new ID string.
 Timestamp is a good choice because it's nearly unique.")
 
-(defvar facets-directory "~/facets/"
-  "The directory for facets.")
+(defvar facets-link-regexp
+  (cons (rx "[[facet:"
+            (group (* (not (any "[" "]"))))
+            "]]")
+        1)
+  "Regexp to match links.
+This is a cons pair.  The car is a regexp and it must contain a
+group that matches the id inside the link, and the cdr is the
+number of the group.")
+
+(defvar facets-id-to-link-function #'facets/default-id-to-link
+  "A function that convers ID to a link.")
+
+(defvar facets-grep-program-debug nil
+  "Nil to silent grep errors.")
 
 ;; TODO: refactor this to a list in the precedence order.
 
@@ -62,7 +78,11 @@ Or it can be the program name if it's in PATH.")
 
 (defun facets/get-grep-process-output (program &optional args)
   "Return the output of PROGRAM with args ARGS.
-If the process exits abnormally, signal an error using the output."
+If the process exits abnormally and:
+
+- `facets-grep-program-debug' is non-nil, signal an error using
+the output.
+- it's nil, then return nil."
   (let* (status
          (output
           (with-output-to-string
@@ -70,11 +90,10 @@ If the process exits abnormally, signal an error using the output."
               (setq status
                     (apply #'process-file program
                            nil standard-output nil args))))))
-    ;; `status' is 1 if no match is found.  This is true for both GNU grep and
-    ;; rg.
-    (if (memq status '(0 1))
+    (if (eq status 0)
         output
-      (error output))))
+      (when facets-grep-program-debug
+        (error "%s exits %s:\n%s"program status output)))))
 
 (defun facets/run-process (program &optional args)
   "Run PROGRAM with ARGS and output to the current buffer."
@@ -181,23 +200,25 @@ Signal an error if current buffer is not a file buffer."
 
 ;;;;; Link
 
-(defvar facets/link-regexp
-  (rx "[["
-      (group (* (not (any "[" "]"))))
-      "]]")
-  "Regexp to match links.
-There's a group in it to match the id inside the link.")
+(defun facets/default-id-to-link (id)
+  "Default function to convert ID to link."
+  (concat "[[facet:" id "]]"))
+
+(defun facets/id-to-link (id)
+  "Convert ID to link."
+  (funcall facets-id-to-link-function id))
 
 (defun facets/link-id-bounds-at-point ()
   "Get the bounds of id in the link at point.
 The bounds is returned as a cons pair."
   (save-excursion
-    (let ((pt (point)))
+    (let ((pt (point))
+          (regexp (car facets-link-regexp))
+          (group (cdr facets-link-regexp)))
       (goto-char (line-beginning-position))
-      (when (and (re-search-forward
-                  facets/link-regexp (line-end-position) t)
+      (when (and (re-search-forward regexp (line-end-position) t)
                  (<= (match-beginning 0) pt (match-end 0)))
-        (cons (match-beginning 1) (match-end 1))))))
+        (cons (match-beginning group) (match-end group))))))
 
 (defun facets/link-id-at-point ()
   "Get the id in the link at point."
@@ -226,7 +247,7 @@ The bounds is returned as a cons pair."
   "Fontify the links between BEG and END."
   (save-excursion
     (goto-char beg)
-    (while (re-search-forward facets/link-regexp end t)
+    (while (re-search-forward (car facets-link-regexp) end t)
       (let* ((b (match-beginning 0))
              (e (match-end 0))
              ov)
@@ -235,7 +256,7 @@ The bounds is returned as a cons pair."
         (overlay-put ov 'face 'button)
         (overlay-put ov 'mouse-face 'link)
         (overlay-put ov 'evaporate t)
-        (overlay-put ov 'help-echo #' facets/link-help-echo-func)
+        (overlay-put ov 'help-echo #'facets/link-help-echo-func)
         ;; Fixing the behavior of pressing RET just before the link.
         (overlay-put (make-overlay (1+ b) e) 'keymap facets-link-keymap)))))
 
@@ -420,7 +441,7 @@ The command should be run at `facets-directory'."
   (let* ((grep-kind (facets/grep-program-kind))
          (grep-prog (facets/grep-program))
          (extensions nil)
-         (str (concat "[[" id "]]"))
+         (str (facets/id-to-link id))
          (pattern (pcase grep-kind
                     ('gnugrep (facets-gnugrep-regexp-quote str))
                     ('rg (facets-rg-regexp-quote str)))))
@@ -437,10 +458,9 @@ The command should be run at `facets-directory'."
          (default-directory facets-directory)
          (files nil))
     (dolist (args (cdr cmd))
-      (setq files (nconc files
-                         (split-string
-                          (facets/get-grep-process-output (car cmd) args)
-                          "\n" 'omit-nulls))))
+      (when-let ((output (facets/get-grep-process-output (car cmd) args)))
+        (setq files (nconc files
+                           (split-string output "\n" 'omit-nulls)))))
     (cl-remove-duplicates files :test #'equal)))
 
 ;;;;; ID related
@@ -670,7 +690,7 @@ If there's already one, update it."
   (interactive)
   (if-let* ((facet (read-file-name "Pick a facet: " facets-directory nil t))
             (id (facets-file-id facet)))
-      (insert "[[" id "]]")
+      (insert (facets/id-to-link id))
     (user-error "Selected file doesn't contain an ID line")))
 
 ;;;###autoload
@@ -761,7 +781,7 @@ It may be convenient to bind this to the keybinding of
          '(display-buffer-use-some-window . ((inhibit-same-window . t)
                                              (inhibit-switch-frame . t))))
       (kill-buffer buf)
-      (user-error "No links found"))))
+      (user-error "No links found for this file"))))
 
 (provide 'facets)
 
