@@ -688,7 +688,10 @@ If there's already one, update it."
 (defun facets-insert-link ()
   "Pick a facet and insert a link pointing to it."
   (interactive)
-  (if-let* ((facet (read-file-name "Pick a facet: " facets-directory nil t))
+  (if-let* ((directory (if (file-in-directory-p default-directory
+                                                facets-directory)
+                           default-directory facets-directory))
+            (facet (read-file-name "Pick a facet: " directory nil t))
             (id (facets-file-id facet)))
       (insert (facets/id-to-link id))
     (user-error "Selected file doesn't contain an ID line")))
