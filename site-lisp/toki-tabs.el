@@ -23,6 +23,13 @@
 (defvar toki-tabs-visible-buffer-limit 4
   "Max number of visible buffers in a group.")
 
+(defvar toki-tabs-ellipsis "…"
+  "Ellipsis used when truncating long buffer names.")
+
+(defvar toki-tabs-buffer-name-max-length 16
+  "Max length of buffer name shown in a tab.
+Nil means don't truncate filenames.")
+
 (defvar toki-tabs-project-root-function
   (lambda ()
     (when-let ((project (project-current nil))) (cdr project)))
@@ -200,6 +207,36 @@ Minibuffer doesn't count.  This is updated by
 (defvar toki-tabs/update-buffer-list-timer nil
   "Idle timer to update buffer.")
 
+(defun toki-tabs/truncated-buffer-name (buf)
+  "Get the truncated name of BUF.
+The buffer name may be truncated according to
+`toki-tabs-buffer-name-max-length'."
+  (if toki-tabs-buffer-name-max-length
+      (let ((buf-name (buffer-name buf))
+            name ext shrink-length)
+        (setq shrink-length (- (length buf-name)
+                               toki-tabs-buffer-name-max-length))
+        (if (> shrink-length 0)
+            (progn
+              (if (and (string-match (rx "." (* (not ".")) line-end) buf-name)
+                       (not (eq 0 (match-beginning 0))))
+                  (setq name (substring buf-name 0 (match-beginning 0))
+                        ext (substring buf-name (1+ (match-beginning 0))))
+                (setq name buf-name
+                      ext ""))
+              (setq name
+                    (substring name 0
+                               (max (- (length name)
+                                       ;; We've saved a char by not including
+                                       ;; the dot before the extension, so we
+                                       ;; minus 1 from `shrink-length'.
+                                       (1- shrink-length)
+                                       (length toki-tabs-ellipsis))
+                                    0)))
+              (concat name toki-tabs-ellipsis ext))
+          buf-name))
+    (buffer-name buf)))
+
 (defun toki-tabs-visible-tabs-and-remain-num ()
   "Return the visible tabs and number of remaining tabs in a cons cell.
 When the current buffer is a hidden buffer, return nil."
@@ -260,20 +297,22 @@ Current and non-active buffers are distinguished by faces."
                              'face 'toki-tabs-rest-face)))
          (get-string (lambda (buf)
                        (if (eq buf current-buf)
-                           (propertize (buffer-name buf)
+                           (propertize (toki-tabs/truncated-buffer-name buf)
                                        'face 'toki-tabs-current-tab-face)
-                         (propertize (buffer-name buf)
+                         (propertize (toki-tabs/truncated-buffer-name buf)
                                      'face 'toki-tabs-inactive-tab-face))))
          (separator (propertize toki-tabs-separator
                                 'face 'toki-tabs-separator-face)))
     (when (and rest (not tab-visible-p))
       (setq rest (concat rest
-                         (propertize (buffer-name current-buf)
+                         (propertize (toki-tabs/truncated-buffer-name
+                                      current-buf)
                                      'face 'toki-tabs-current-tab-face))))
     (if tabs
         (string-join (nconc (mapcar get-string tabs) (when rest (list rest)))
                      separator)
-      (propertize (buffer-name current-buf) 'face 'toki-tabs-current-tab-face))))
+      (propertize (toki-tabs/truncated-buffer-name current-buf)
+                  'face 'toki-tabs-current-tab-face))))
 
 ;;;; Commands
 
