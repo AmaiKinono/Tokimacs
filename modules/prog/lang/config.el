@@ -123,3 +123,8 @@
 ;;; Yaml
 
 (use-package yaml-mode)
+
+;;; Julia
+
+(use-package julia-mode
+  :defer t)
