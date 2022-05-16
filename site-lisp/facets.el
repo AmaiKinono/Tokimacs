@@ -701,17 +701,12 @@ If there's already one, update it."
   "Copy the id of the link if there's one at point, or of the current file.
 Return t if success, otherwise return nil."
   (interactive)
-  (let (bounds id-type)
-    (or (and (setq bounds (facets/link-id-bounds-at-point))
-             (setq id-type 'link))
-        (and (setq bounds (facets-current-file-id-bounds))
-             (setq id-type 'file)))
-    (when bounds
-      (kill-ring-save (car bounds) (cdr bounds))
-      (message (pcase id-type
-                 ('link "ID of current link copied.")
-                 ('file "ID of current facet copied.")))
-      t)))
+  (if-let ((bounds (facets-current-file-id-bounds)))
+      (progn (kill-new (concat "facet-id:"
+                               (buffer-substring-no-properties
+                                (car bounds) (cdr bounds))))
+             (message "ID of current facet copied"))
+    (user-error "Facet ID not found for current buffer")))
 
 ;;;###autoload
 (defun facets-copy-id-or-region ()
