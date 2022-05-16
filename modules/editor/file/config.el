@@ -50,6 +50,8 @@
 
 ;;; Window
 
+(setq mouse-autoselect-window t)
+
 (use-package winum
   :trigger after-init-hook
   :config
