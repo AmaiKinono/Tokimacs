@@ -36,6 +36,74 @@
   (toki/setq-default
    markdown-enable-math t))
 
+;;; Org mode
+
+(defun toki/org-on-latex-preview-p ()
+  "See if point is on a latex fragment preview."
+  (let ((ols (overlays-at (point))))
+    (cl-dolist (ol ols)
+      (when (eq (overlay-get ol 'org-overlay-type) 'org-latex-overlay)
+        (cl-return t)))))
+
+(defun toki/org-at-latex-fragment-p ()
+  "See if point is at a latex fragment"
+  (let ((datum (org-element-context)))
+    (memq (org-element-type datum) '(latex-environment latex-fragment))))
+
+(defun toki/org-buffer-has-latex-preview-p ()
+  "See if the buffer contains LaTeX fragment preview."
+  (let ((ols (overlays-in (point-min) (point-max))))
+    (cl-dolist (ol ols)
+      (when (eq (overlay-get ol 'org-overlay-type) 'org-latex-overlay)
+        (cl-return t)))))
+
+(defun toki-toggle-latex-preview ()
+  "Toggle latex preview of fragment or buffer."
+  (interactive)
+  (cond
+   ((or (toki/org-on-latex-preview-p) (toki/org-at-latex-fragment-p))
+    (org-latex-preview))
+   ((toki/org-buffer-has-latex-preview-p)
+    (org-clear-latex-preview (point-min) (point-max)))
+   (t
+    (message "Generating preview...")
+    (org--latex-preview-region (point-min) (point-max))
+    (message "Generating preview... Done."))))
+
+(defun toki-clear-latex-preview-cache ()
+  "Clear LaTeX fragments preview cache."
+  (interactive)
+  (when (and (file-exists-p org-preview-latex-image-directory)
+             (file-directory-p org-preview-latex-image-directory))
+    (delete-directory org-preview-latex-image-directory 'recursive)))
+
+(use-package org
+  :straight nil
+  :defer t
+  :config
+  ;; General Config
+  (toki/setq org-startup-truncated nil
+             org-startup-with-inline-images t
+             org-link-descriptive nil
+             org-edit-src-content-indentation 0)
+  ;; Inline format for CJK
+  (setcar (nthcdr 0 org-emphasis-regexp-components) " \t('\"{[:nonascii:]")
+  (setcar (nthcdr 1 org-emphasis-regexp-components) "- \t.,:!?;'\")}\\[[:nonascii:]")
+  (org-set-emph-re 'org-emphasis-regexp-components org-emphasis-regexp-components)
+  (org-element-update-syntax)
+  ;; Otherwise when using "_" to mark CJK parts, Org thinks it's two subscripts.
+  (setq org-use-sub-superscripts "{}")
+  ;; LaTeX Preview
+  (plist-put org-format-latex-options :scale 1.6)
+  (when (executable-find "dvisvgm")
+    (setq org-latex-create-formula-image-program 'dvisvgm))
+  ;; Keybinds
+  (toki-local-def
+    :keymaps 'org-mode-map
+    "t" '(org-insert-structure-template :wk "Insert Template")
+    "p" `(,(toki-make-combo toki-toggle-latex-preview) :wk "<> LaTeX Preview")
+    "P" '(toki-clear-latex-preview-cache :wk "Clear LaTeX Preview Cache")))
+
 ;;; Web
 
 (use-package web-mode
