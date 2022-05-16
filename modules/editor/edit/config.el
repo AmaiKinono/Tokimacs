@@ -457,7 +457,18 @@ See the docstring of `replace-string' for details."
      trailing         ; trailing blanks
      tabs             ; tabs (show by face)
      tab-mark         ; tabs (show by symbol)
-     )))
+     ))
+  (add-hook 'text-mode-hook
+            (defun toki/set-text-mode-whitespace-style ()
+              (setq-local
+               whitespace-style
+               '(face             ; visualize things below:
+                 empty            ; empty lines at beginning/end of buffer
+                 space-before-tab ; spaces before tab
+                 trailing         ; trailing blanks
+                 tabs             ; tabs (show by face)
+                 tab-mark         ; tabs (show by symbol)
+                 )))))
 
 ;; whitespace-cleanup-mode automatically clean up bad blanks (like trailing
 ;; whitespaces, empty lines at the end of file) when we save, but only when the
