@@ -369,6 +369,12 @@ See the docstring of `replace-string' for details."
   :straight nil
   :defer t)
 
+(use-package subword
+  :straight nil
+  :trigger pre-command-hook
+  :config
+  (subword-mode))
+
 (use-package elec-pair
   :straight nil
   :trigger pre-command-hook
