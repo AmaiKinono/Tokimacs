@@ -60,14 +60,6 @@ chars.  This should be useful for CJK users."
   (toki/setq
    citre-project-root-function #'toki-project-root))
 
-(use-package citre-global
-  :straight nil
-  :trigger 'citre-mode-hook
-  :init
-  (general-def
-    :keymaps 'citre-peek-keymap
-    "M-l r" 'citre-peek-through-references))
-
 ;;; Code reading
 
 (use-package clue
