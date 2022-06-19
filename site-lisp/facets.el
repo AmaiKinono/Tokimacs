@@ -762,16 +762,15 @@ It may be convenient to bind this to the keybinding of
   "List links to the id of current file."
   (interactive)
   (let* ((buf (generate-new-buffer "*Facets Link Locations*"))
-         (default-directory facets-directory)
          id cmd success-flag)
     (or (setq id (facets-current-file-id))
         (user-error "ID not found for current file"))
     (setq cmd (facets-grep-find-references-cmd id))
     (with-current-buffer buf
+      (setq default-directory facets-directory)
       (facets/run-process (car cmd) (cdr cmd))
       (unless (eq (point-min) (point-max))
         (setq success-flag t)
-        (setq default-directory facets-directory)
         (grep-mode)))
     (if success-flag
         (pop-to-buffer
