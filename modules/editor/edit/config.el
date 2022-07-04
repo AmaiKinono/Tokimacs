@@ -373,7 +373,7 @@ See the docstring of `replace-string' for details."
   :straight nil
   :trigger pre-command-hook
   :config
-  (subword-mode))
+  (global-subword-mode))
 
 (use-package elec-pair
   :straight nil
