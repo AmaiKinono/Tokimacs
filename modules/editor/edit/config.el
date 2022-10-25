@@ -363,7 +363,8 @@ See the docstring of `replace-string' for details."
   (add-hook 'term-mode-hook #'puni-disable-puni-mode)
   ;;(add-hook 'prog-mode-hook #'puni-flyindent-mode)
   :config
-  (toki/setq puni--debug t))
+  (toki/setq puni--debug t
+             puni-confirm-when-delete-unbalanced-active-region nil))
 
 (use-package toki-editing
   :straight nil
