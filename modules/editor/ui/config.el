@@ -101,7 +101,12 @@ This is run in `toki-after-load-theme-hook' to use italic comment
 for all themes."
   (set-face-attribute 'font-lock-comment-face nil :slant 'italic))
 
+(defun toki/flat-fringe ()
+  "Remove the background of fringe so it looks prettier."
+  (set-face-attribute 'fringe nil :background 'unspecified))
+
 (add-hook 'toki-after-load-theme-hook #'toki/italic-comment)
+(add-hook 'toki-after-load-theme-hook #'toki/flat-fringe)
 
 (defun toki-switch-theme ()
   "Cycle through themes in `toki-themes'."
