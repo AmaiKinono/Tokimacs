@@ -131,3 +131,8 @@
 
 (use-package julia-mode
   :defer t)
+
+;;; Rust
+
+(use-package rust-mode
+  :defer t)
