@@ -79,7 +79,7 @@ The first element is used as the default theme.")
   :config
   ;; TODO: change wgrep-face.  It's awful...
   (define-advice base16-theme-define (:around (fn theme-name theme-colors) fix)
-    (base16-set-faces
+    (base16-theme-set-faces
      theme-name theme-colors
      ;; Cursor should be light (on dark themes, vice versa).
      '((cursor :background base06)
