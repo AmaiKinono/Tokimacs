@@ -62,55 +62,122 @@ After you set this, call `toki-term-setup-escape-keys'.")
   (toki-term-remove-escape-char)
   (toki-term-setup-escape-keys))
 
+;;;; Internals
+
+(defun toki-term/get-term-buffer (&optional dir)
+  "Get a term buffer for DIR.
+That's the first buffer in `buffer-list' that's in `term-mode'
+and its `default-directory' is DIR.  When DIR is nil, current
+project root or `default-directory' is used."
+  (let ((dir (file-truename (or dir (funcall toki-term-project-root-function)
+                                default-directory))))
+    (cl-dolist (buf (buffer-list))
+      (with-current-buffer buf
+        (when (and (derived-mode-p 'term-mode)
+                   (equal (file-truename default-directory) dir))
+          (cl-return buf))))))
+
+(defun toki-term/get-term-buffers (&optional dir)
+  "Get term buffers for DIR.
+That's all buffers in `buffer-list' that's in `term-mode' and its
+`default-directory' is DIR.  When DIR is nil, current project
+root or `default-directory' is used."
+  (let ((dir (file-truename (or dir (funcall toki-term-project-root-function)
+                                default-directory)))
+        result)
+    (dolist (buf (buffer-list))
+      (with-current-buffer buf
+        (when (and (derived-mode-p 'term-mode)
+                   (equal (file-truename default-directory) dir))
+          (push buf result))))
+    (nreverse result)))
+
+(defun toki-term/create-term (&optional dir)
+  "Create a term buffer in DIR.
+When DIR is nil, use current project root or `default-directory'.
+The created buffer is returned."
+  (let ((buf (generate-new-buffer "*term*"))
+        (dir (or dir (funcall toki-term-project-root-function) default-directory))
+        (prog (toki-term/get-shell-prog)))
+    (with-current-buffer buf
+      (let ((default-directory dir))
+        (term-mode)
+        (term-exec buf (buffer-name) prog nil nil)
+        (term-char-mode)))
+    buf))
+
+(defun toki-term/term-buf-child-proc-name (buf)
+  "Get the child process name of term buffer BUF.
+If the terminal isn't running any program, return nil."
+  (when-let ((pid (process-running-child-p (get-buffer-process buf))))
+    (alist-get 'args (process-attributes pid))))
+
+(defun toki-term/get-shell-prog ()
+  "Get shell program name."
+  (or toki-term-shell-program explicit-shell-file-name
+      (getenv "SHELL") shell-file-name
+      (read-file-name "Shell executable: " "/" nil t)))
+
 ;;;; Commands
 
 ;;;###autoload
-(defun toki-term (&optional dir)
+
+(defun toki-pick-term (&optional dir)
+  "Pick a term buffer with DIR being the pwd.
+This uses `completing-read' and a \"*New*\" option creates a new
+terminal in DIR."
+  (interactive)
+  (let* ((dir (or dir (funcall toki-term-project-root-function) default-directory))
+         (bufs (toki-term/get-term-buffers dir))
+         (cands (append (list '("*New*" . nil))
+                        (mapcar
+                         (lambda (buf)
+                           (cons (concat (buffer-name buf)
+                                         " "
+                                         (or (toki-term/term-buf-child-proc-name buf)
+                                             "(idle)"))
+                                 buf))
+                         bufs)))
+         (cand (completing-read "Term: " cands nil t))
+         (buf (alist-get cand cands nil nil #'equal)))
+    (if buf (pop-to-buffer buf)
+      (pop-to-buffer (toki-term/create-term dir)))
+    ;; If the user calls `ansi-term' before, undo its call to
+    ;; `term-set-escape-char'.
+    (when term-escape-char
+      (toki-term-remove-escape-char)
+      (toki-term-setup-escape-keys))))
+
+;;;###autoload
+(defun toki-term (&optional dir pick-in-term)
   "Start a terminal emulator on DIR.
 When DIR is nil, set it to the project root, or current directory
 if project can't be detected.
 
+When called interactively in a term buffer, or PICK-IN-TERM is
+non-nil and the current buffer is a term buffer, run
+`toki-pick-term'.
+
 When there's already a terminal with DIR being the working
-directory, and there's no program running in it, switch to that
-terminal.  If you do want a new terminal, call `toki-term' again
-after that.
+directory, switch to that terminal.  If you do want a new
+terminal, call `toki-term' again and select \"*New*\".
 
 This is like `term' but with several tweaks to make you happier,
-see the package `toki-term'."
-  (interactive)
-  (let* ((prog (or toki-term-shell-program explicit-shell-file-name
-                   (getenv "SHELL") shell-file-name
-                   (read-file-name "Shell executable: " "/" nil t)))
-         (dir (or dir (funcall toki-term-project-root-function) default-directory))
-         target)
-    (setq dir (file-truename dir))
-    (unless (derived-mode-p 'term-mode)
-      (cl-dolist (buf (buffer-list))
-        (with-current-buffer buf
-          (when (and (derived-mode-p 'term-mode)
-                     (equal (file-truename default-directory) dir)
-                     ;; Make sure the term isn't running any program.
-                     (not (process-running-child-p (get-buffer-process buf))))
-            (setq target buf)
-            (cl-return)))))
-    (unless target
-      (setq target (generate-new-buffer "*term*"))
-      (with-current-buffer target
-        (let ((default-directory dir))
-          (term-mode)
-          (term-exec target (buffer-name) prog nil nil)
-          (term-char-mode)))
-      ;; If the user calls `ansi-term' before, undo its call to
-      ;; `term-set-escape-char'.
-      (when term-escape-char
-        (toki-term-remove-escape-char)
-        (toki-term-setup-escape-keys)))
-    (pop-to-buffer target)))
+see the package description of `toki-term'."
+  (interactive "i\np")
+  (let* ((dir (or dir (funcall toki-term-project-root-function) default-directory)))
+    (if (and pick-in-term (derived-mode-p 'term-mode))
+        (toki-pick-term dir)
+      (let ((buf (or (toki-term/get-term-buffer dir)
+                     (toki-term/create-term dir))))
+        (pop-to-buffer buf)))
+    (when term-escape-char
+      (toki-term-remove-escape-char)
+      (toki-term-setup-escape-keys))))
 
 ;;;###autoload
 (defun toki-term-in-dir ()
-  "Start a terminal emulator in the directory you selected.
-It uses `toki-term' internally."
+  "Run `toki-term' with DIR being manually selected."
   (interactive)
   (let ((dir (read-directory-name "Dir: ")))
     (toki-term dir)))
