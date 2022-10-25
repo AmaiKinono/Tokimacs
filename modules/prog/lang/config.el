@@ -85,7 +85,9 @@
   (toki/setq org-startup-truncated nil
              org-startup-with-inline-images t
              org-link-descriptive nil
-             org-edit-src-content-indentation 0)
+             org-edit-src-content-indentation 0
+             org-image-actual-width
+             (list (/ (min (display-pixel-height) (display-pixel-width)) 2.5)))
   ;; Inline format for CJK
   (setcar (nthcdr 0 org-emphasis-regexp-components) " \t('\"{[:nonascii:]")
   (setcar (nthcdr 1 org-emphasis-regexp-components) "- \t.,:!?;'\")}\\[[:nonascii:]")
