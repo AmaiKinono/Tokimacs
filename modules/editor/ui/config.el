@@ -74,7 +74,8 @@ The first element is used as the default theme.")
 (use-package base16-theme
   :init
   (toki/setq
-   base16-distinct-fringe-background nil)
+   base16-distinct-fringe-background nil
+   base16-theme-256-color-source 'colors)
   :defer t
   :config
   ;; TODO: change wgrep-face.  It's awful...
