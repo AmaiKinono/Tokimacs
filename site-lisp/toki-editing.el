@@ -20,9 +20,6 @@
 
 ;;;; Libraries
 
-(require 'toki-common)
-(toki-declare-ext-pkg puni)
-
 (require 'cl-lib)
 (require 'puni)
 

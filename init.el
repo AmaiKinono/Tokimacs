@@ -12,6 +12,9 @@
 (defconst toki-modules-dir (concat user-emacs-directory "modules/")
   "Directory of modules.")
 
+(defconst toki-site-lisp-dir (concat user-emacs-directory "site-lisp/")
+  "Directory of site-lisps.")
+
 (load (concat user-emacs-directory "core") 'noerror 'nomessage)
 (load (concat toki-modules-dir "private/custom-pre") 'noerror 'nomessage)
 

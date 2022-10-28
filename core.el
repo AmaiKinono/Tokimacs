@@ -208,19 +208,52 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
   (require 'autoload)
   (require 'bytecomp))
 
+(defvar toki-site-lisp-build-dir
+  (progn
+    (make-directory (concat toki-site-lisp-dir ".build/") t)
+    (concat toki-site-lisp-dir ".build/"))
+  "Directory of byte-compiling and autoloads of site-lisps.")
+
+(defvar toki-site-lisps-to-build nil)
+
+(defun toki-build-site-lisp ()
+  (when toki-site-lisps-to-build
+    (let ((generated-autoload-file
+           (concat toki-site-lisp-build-dir "autoloads.el")))
+      ;; Byte compile.
+      (dolist (f toki-site-lisps-to-build)
+        (byte-compile-file (concat toki-site-lisp-build-dir f)))
+      ;; Generate autoload file.  I don't know why but
+      ;; `update-directory-autoloads' seems to not work once autoloads.el is
+      ;; generated. We need to delete & regenerate it.
+      (when (file-exists-p generated-autoload-file)
+        (delete-file generated-autoload-file))
+      (with-current-buffer (find-file-noselect generated-autoload-file)
+        (insert ";; -*- lexical-binding: t -*-\n")
+        (save-buffer)
+        (kill-buffer))
+      (update-directory-autoloads toki-site-lisp-build-dir)
+      ;; Byte compile the autoload file.
+      (byte-compile-file generated-autoload-file)
+      ;; Native compile.
+      (when (native-comp-available-p)
+        (native-compile-async (list toki-site-lisp-build-dir))))))
+
+;; We build after initialization so that external packages are already in
+;; `load-path', and site-lisps depending on them could be built.
+(add-hook 'after-init-hook #'toki-build-site-lisp)
+
 ;; TODO: recompile when Emacs version changes
 (let* (;; Dir & files
-       (site-lisp-dir (concat user-emacs-directory "site-lisp/"))
-       (build-dir (progn (make-directory (concat site-lisp-dir ".build/") t)
-                         (concat site-lisp-dir ".build/")))
-       (site-lisp-files (directory-files site-lisp-dir nil ".el$"))
-       (site-lisp-symlinks (cl-remove "autoloads.el"
-                                      (directory-files build-dir nil ".el$")
-                                      :test #'equal))
-       (byte-compiled-files (cl-remove "autoloads.elc"
-                                       (directory-files build-dir nil ".elc$")
-                                       :test #'equal))
-       (newer-lisp-file nil)
+       (site-lisp-files (directory-files toki-site-lisp-dir nil ".el$"))
+       (site-lisp-symlinks
+        (cl-remove "autoloads.el"
+                   (directory-files toki-site-lisp-build-dir nil ".el$")
+                   :test #'equal))
+       (byte-compiled-files
+        (cl-remove "autoloads.elc"
+                   (directory-files toki-site-lisp-build-dir nil ".elc$")
+                   :test #'equal))
        (delete-by-moving-to-trash nil)
        ;; Prevent `update-directory-autoloads' from running hooks when visiting
        ;; the autoload file.
@@ -228,54 +261,37 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
        (write-file-functions nil)
        ;; Prevent `update-directory-autoloads' from creating backup files.
        (backup-inhibited t)
-       (version-control 'never)
-       (generated-autoload-file (concat build-dir "autoloads.el")))
+       (version-control 'never))
   (cl-letf (((symbol-function #'byte-compile-log-file) #'ignore)
             ((symbol-function #'byte-compile-nogroup-warn) #'ignore))
-    (add-to-list 'load-path build-dir)
+    (add-to-list 'load-path toki-site-lisp-build-dir)
     (let ((unneeded-symlinks
            (cl-set-difference site-lisp-symlinks site-lisp-files
                               :test #'equal)))
       (dolist (f unneeded-symlinks)
-        (delete-file (concat build-dir f))))
+        (delete-file (concat toki-site-lisp-build-dir f))))
     (let ((unneeded-byte-files
            (cl-set-difference byte-compiled-files
                               (mapcar (lambda (s) (concat s "c"))
                                       site-lisp-files)
                               :test #'equal)))
       (dolist (f unneeded-byte-files)
-        (delete-file (concat build-dir f))))
+        (delete-file (concat toki-site-lisp-build-dir f))))
     (dolist (f site-lisp-files)
       ;; Make symlinks of site-lisp files in build-dir.  This is needed for
       ;; `byte-compile-file' and `update-directory-autoloads'.
       (unless (member f site-lisp-symlinks)
-        (make-symbolic-link (concat site-lisp-dir f)
-                            (concat build-dir f)))
+        (make-symbolic-link (concat toki-site-lisp-dir f)
+                            (concat toki-site-lisp-build-dir f)))
       ;; Byte compile
-      (let ((byte-file (concat build-dir f "c"))
-            (site-lisp (concat site-lisp-dir f)))
+      (let ((byte-file (concat toki-site-lisp-build-dir f "c"))
+            (site-lisp (concat toki-site-lisp-dir f)))
         (when (or (not (file-exists-p byte-file))
                   (file-newer-than-file-p site-lisp byte-file))
-          (setq newer-lisp-file t)
-          (byte-compile-file (concat build-dir f)))))
-    ;; Generate autoload file
-    (when newer-lisp-file
-      ;; I don't know why but `update-directory-autoloads' seems to not work
-      ;; once autoloads.el is generated. We need to regenerate it.
-      (when (file-exists-p generated-autoload-file)
-        (delete-file generated-autoload-file))
-      (with-current-buffer (find-file-noselect generated-autoload-file)
-        (insert ";; -*- lexical-binding: t -*-\n")
-        (save-buffer))
-      (update-directory-autoloads build-dir)
-      (when-let ((buf (find-buffer-visiting generated-autoload-file)))
-        (kill-buffer buf))
-      (byte-compile-file (concat build-dir "autoloads.el"))
-      (when (native-comp-available-p)
-        (native-compile-async (list build-dir))))
-    (add-to-list 'custom-theme-load-path build-dir)
+          (push f toki-site-lisps-to-build))))
+    (add-to-list 'custom-theme-load-path toki-site-lisp-build-dir)
     ;; Load autoload file
-    (load (concat build-dir "autoloads") 'noerror 'nomessage)))
+    (load (concat toki-site-lisp-build-dir "autoloads") 'noerror 'nomessage)))
 
 ;;; Basic packages
 
