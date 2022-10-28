@@ -39,7 +39,10 @@ See `consult-find-command'.")
 (defun toki-project-root ()
   "Return project root of current buffer."
   (if-let ((project (project-current nil)))
-      (expand-file-name (cdr project))
+      (expand-file-name
+       (if (fboundp #'project-root)
+           (project-root project)
+         (car (project-roots project))))
     (locate-dominating-file
      (or (buffer-file-name) default-directory)
      (lambda (dir)
