@@ -9,7 +9,7 @@
 
 ;;;; Themes
 
-(defvar toki-themes '(toki-base16-gruvbox base16-atelier-plateau-light)
+(defvar toki-themes '(toki-base16-gruvbox base16-atelier-dune-light)
   "Themes used when calling `toki-switch-theme'.
 The first element is used as the default theme.")
 
