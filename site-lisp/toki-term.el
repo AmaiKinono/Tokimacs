@@ -40,6 +40,22 @@ are escaped.
 
 After you set this, call `toki-term-setup-escape-keys'.")
 
+(defvar toki-term-bracketed-paste-programs
+  '("julia")
+  "Use bracketed paste for these programs running in term.
+This influences `toki-term-yank' and
+`toki-term-send-region-to-visible-term'.
+
+The main effect of bracketed paste is changing the behavior of
+newline char in REPLs. Some REPLs evaluates the user input even
+if the expression is incomplete. By turning on bracketed paste,
+the terminal makes the REPL know the difference of a user
+inputted newline and a pasted/sended newline.
+
+The rule of thumb is: if you notice wrong/strange behavior when
+sending multiple expressions to a REPL, see if adding the program
+name in this list fixes that.")
+
 ;;;; term.el tweaks
 
 (defun toki-term-remove-escape-char ()
@@ -63,6 +79,9 @@ After you set this, call `toki-term-setup-escape-keys'.")
   (toki-term-setup-escape-keys))
 
 ;;;; Internals
+
+(defconst toki-term/open-bracket "\033[200~")
+(defconst toki-term/close-bracket "\033[201~")
 
 (defun toki-term/get-term-buffer (&optional dir)
   "Get a term buffer for DIR.
@@ -92,6 +111,22 @@ root or `default-directory' is used."
           (push buf result))))
     (nreverse result)))
 
+(defun toki-term/buf-desc (buf)
+  "Return description of terminal buffer BUF.
+The description contains the buffer name, and the program running
+in it, or \"idle\" if the terminal is not running any program."
+  (concat (buffer-name buf)
+          " "
+          (or (toki-term/term-buf-child-proc-name buf)
+              "(idle)")))
+
+(defun toki-term/get-visible-term-bufs ()
+  "Get visible term buffers."
+  (seq-filter (lambda (buf)
+                (with-current-buffer buf
+                  (derived-mode-p 'term-mode)))
+              (mapcar #'window-buffer (window-list))))
+
 (defun toki-term/create-term (&optional dir)
   "Create a term buffer in DIR.
 When DIR is nil, use current project root or `default-directory'.
@@ -118,10 +153,9 @@ If the terminal isn't running any program, return nil."
       (getenv "SHELL") shell-file-name
       (read-file-name "Shell executable: " "/" nil t)))
 
-;;;; Commands
+;;;; Create/switch to term commands
 
 ;;;###autoload
-
 (defun toki-pick-term (&optional dir)
   "Pick a term buffer with DIR being the pwd.
 This uses `completing-read' and a \"*New*\" option creates a new
@@ -132,10 +166,7 @@ terminal in DIR."
          (cands (append (list '("*New*" . nil))
                         (mapcar
                          (lambda (buf)
-                           (cons (concat (buffer-name buf)
-                                         " "
-                                         (or (toki-term/term-buf-child-proc-name buf)
-                                             "(idle)"))
+                           (cons (toki-term/buf-desc buf)
                                  buf))
                          bufs)))
          (cand (completing-read "Term: " cands nil t))
@@ -219,7 +250,35 @@ see the package description of `toki-term'."
              (text (string-trim text "\n+" "\n+")))
     (when (or (not (string-match-p "\n" text))
               (y-or-n-p "You are pasting a multiline string.  Continue? "))
-      (term-send-raw-string text))))
+      (let ((bracketed-p (member (toki-term/term-buf-child-proc-name (current-buffer))
+                                 toki-term-bracketed-paste-programs)))
+        (when bracketed-p (term-send-raw-string toki-term/open-bracket))
+        (term-send-raw-string text)
+        (when bracketed-p (term-send-raw-string toki-term/close-bracket))))))
+
+;;;###autoload
+(defun toki-term-send-region-to-visible-term ()
+  "Send active region to a visible term buffer."
+  (interactive)
+  (unless (use-region-p)
+    (user-error "No active region"))
+  (let ((bufs (toki-term/get-visible-term-bufs))
+        buf)
+    (pcase (length bufs)
+      (0 (user-error "No visible term buffer"))
+      (1 (setq buf (car bufs)))
+      (_ (setq buf (completing-read
+                    "Term: "
+                    (mapcar (lambda (buf)
+                              (cons (toki-term/buf-desc buf) buf))
+                            bufs)
+                    nil t))))
+    (let ((bracketed-p (member (toki-term/term-buf-child-proc-name buf)
+                               toki-term-bracketed-paste-programs)))
+      (when bracketed-p (process-send-string buf toki-term/open-bracket))
+      (process-send-region buf (region-beginning) (region-end))
+      (when bracketed-p (process-send-string buf toki-term/close-bracket)))
+    (pop-to-buffer buf)))
 
 (provide 'toki-term)
 

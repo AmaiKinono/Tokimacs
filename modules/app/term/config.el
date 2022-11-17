@@ -24,4 +24,6 @@
     "c" '("Char Mode" . term-char-mode)))
 
 (toki-app-def
-  "t" '(toki-term :wk "Terminal"))
+  "t" '(toki-term :wk "Terminal")
+  "T" '(toki-term-in-dir :wk "Terminal (Pick Dir)")
+  "s" '(toki-term-send-region-to-visible-term :wk "Send Region to Term"))
