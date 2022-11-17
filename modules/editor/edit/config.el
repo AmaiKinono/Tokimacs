@@ -616,7 +616,7 @@ these codes."
   "C" '(:ignore t :wk "Coding System")
   "Cd" '(describe-current-coding-system :wk "Describe Current")
   "Cr" '(revert-buffer-with-coding-system :wk "Reopen With")
-  "Cc" '(set-buffer-file-coding-system :wk "Convert To")
+  "Cc" '(set-buffer-file-coding-system :wk "Convert to")
   "q" '(toki-quit-emacs :wk "Quit Emacs")
   "r" '(toki-reload-init-file :wk "Reload Config")
   "<" `(,(toki-make-combo indent-rigidly-left) :wk "Indent Left")
