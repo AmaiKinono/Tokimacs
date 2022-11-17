@@ -335,9 +335,19 @@ See the docstring of `replace-string' for details."
     "r" '("Remove Change in Region" . wgrep-remove-change)
     "R" '("Remove All Changes" . wgrep-remove-all-change)))
 
-;; TODO: grep integration
+(defun toki-grep ()
+  "Run ripgrep, git-grep or grep."
+  (interactive)
+  (cond
+   ((executable-find "rg" 'remote)
+    (consult-ripgrep 'prompt-dir))
+   ((and (vc-git-root default-directory)
+         (executable-find "git" 'remote))
+    (consult-git-grep 'prompt-dir))
+   ((executable-find "grep" 'remote)
+    (consult-grep 'prompt-dir))))
 
-;; TODO: more ideas on structural editing; evil-matchit, embrace
+;;;; Edit
 
 (use-package puni
   :defer t
@@ -588,7 +598,8 @@ these codes."
   "s" '(isearch-forward-regexp :wk "Search Regexp")
   "S" '(isearch-forward :wk "Search Literally")
   "r" '(toki-replace-string-fold :wk "Replace String")
-  "R" '(toki-replace-string-strictly :wk "Replace String (Strictly)"))
+  "R" '(toki-replace-string-strictly :wk "Replace String (Strictly)")
+  "g" '(toki-grep :wk "Grep"))
 
 (toki-edit-def
   "u" '(undo-propose :wk "Browse Undo History")
