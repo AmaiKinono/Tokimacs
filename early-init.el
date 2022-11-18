@@ -5,10 +5,16 @@
 
 ;;; Startup optimization
 
-(defvar toki/gc-cons-threshold gc-cons-threshold
+(defvar toki-gc-cons-threshold gc-cons-threshold
+  "`gc-cons-threshold'.
+If you want to customize `gc-cons-threshold', set this instead of
+`gc-cons-threshold' as `gc-cons-threshold' is set to
+`toki-gc-cons-threshold' in `after-init-hook'.")
+
+(defvar toki/gc-cons-threshold-cache gc-cons-threshold
   "Cache `gc-cons-threshold' during startup.")
 
-(defvar toki/file-name-handler-alist file-name-handler-alist
+(defvar toki/file-name-handler-alist-cache file-name-handler-alist
   "Cache `file-name-handler-alist' during startup.")
 
 (setq gc-cons-threshold most-positive-fixnum
@@ -16,15 +22,13 @@
 
 (defun toki/finish-startup ()
   "Restore default value of some variables after startup."
-  (setq file-name-handler-alist toki/file-name-handler-alist)
-  ;; The user may change `gc-cons-threshold' in custom-post.el.
-  (unless (eq gc-cons-threshold most-positive-fixnum)
-    (setq gc-cons-threshold toki/gc-cons-threshold))
+  (setq file-name-handler-alist toki/file-name-handler-alist-cache)
+  (setq gc-cons-threshold toki-gc-cons-threshold)
   ;; GC when idle.
   (run-with-idle-timer 5 t #'garbage-collect)
   ;; GC when Emacs frame is out of focus.
   (add-function :after after-focus-change-function
-                (defun gc-after-focus-change ()
+                (defun toki/gc-after-focus-change ()
                   (unless (frame-focus-state)
                     (garbage-collect)))))
 
