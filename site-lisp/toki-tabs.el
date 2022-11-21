@@ -207,6 +207,8 @@ Minibuffer doesn't count.  This is updated by
 (defvar toki-tabs/update-buffer-list-timer nil
   "Idle timer to update buffer.")
 
+(defvar toki-tabs-string nil)
+
 (defun toki-tabs/truncated-buffer-name (buf)
   "Get the truncated name of BUF.
 The buffer name may be truncated according to
@@ -308,11 +310,12 @@ Current and non-active buffers are distinguished by faces."
                          (propertize (toki-tabs/truncated-buffer-name
                                       current-buf)
                                      'face 'toki-tabs-current-tab-face))))
-    (if tabs
-        (string-join (nconc (mapcar get-string tabs) (when rest (list rest)))
-                     separator)
-      (propertize (toki-tabs/truncated-buffer-name current-buf)
-                  'face 'toki-tabs-current-tab-face))))
+    (setq toki-tabs-string
+          (if tabs
+              (string-join (nconc (mapcar get-string tabs) (when rest (list rest)))
+                           separator)
+            (propertize (toki-tabs/truncated-buffer-name current-buf)
+                        'face 'toki-tabs-current-tab-face)))))
 
 ;;;; Commands
 
