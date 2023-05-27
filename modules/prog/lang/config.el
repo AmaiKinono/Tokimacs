@@ -88,6 +88,11 @@
              org-edit-src-content-indentation 0
              org-image-actual-width
              (list (/ (min (display-pixel-height) (display-pixel-width)) 2.5)))
+  ;; HTML export style
+  (toki/setq org-html-head
+             "<style>
+  img { max-width: 100%; }
+</style>")
   ;; Inline format for CJK
   (setcar (nthcdr 0 org-emphasis-regexp-components) " \t('\"{[:nonascii:]")
   (setcar (nthcdr 1 org-emphasis-regexp-components) "- \t.,:!?;'\")}\\[[:nonascii:]")
