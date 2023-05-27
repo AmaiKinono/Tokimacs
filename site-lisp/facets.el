@@ -990,6 +990,11 @@ If the frontmatter is not presented, return nil."
 
 ;;;;; Facets Mode
 
+(defun facets/trim-buffer-name ()
+  "Trim the ID in current buffer name."
+  (when-let* ((file-name (buffer-file-name)))
+    (rename-buffer (facets/filename-sans-id file-name))))
+
 (defun facets/eldoc-call (callback)
   "Eldoc backend for `facets-mode'.
 It calls CALLBACK in an idle timer."
@@ -1023,8 +1028,7 @@ It calls CALLBACK in an idle timer."
     (add-hook 'after-change-major-mode-hook
               #'facets-mode nil t)
     (setq facets/eldoc-mode-enabled-orig eldoc-mode)
-    (when-let* ((file-name (buffer-file-name)))
-      (rename-buffer (facets/filename-sans-id file-name)))
+    (facets/trim-buffer-name)
     (eldoc-mode))
    (t
     (jit-lock-unregister #'facets/refontify)
@@ -1167,7 +1171,9 @@ suggested to use `facets-sync-file-name' instead.  Really continue? "))
       (setq filename (facets/make-filename id title tags ext))
       (setq filename (expand-file-name filename dir))
       (with-current-buffer buf
-        (set-visited-file-name filename))))
+        (set-visited-file-name filename))
+      (when facets-mode
+        (facets/trim-buffer-name))))
   (save-buffer))
 
 ;;;;; Create facets
