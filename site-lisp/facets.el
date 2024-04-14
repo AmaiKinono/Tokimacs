@@ -1172,10 +1172,10 @@ suggested to use `facets-sync-file-name' instead.  Really continue? "))
       (setq filename (facets/make-filename id title tags ext))
       (setq filename (expand-file-name filename dir))
       (with-current-buffer buf
-        (set-visited-file-name filename))
-      (when facets-mode
-        (facets/trim-buffer-name))))
-  (save-buffer))
+        (set-visited-file-name filename))))
+  (save-buffer)
+  (when facets-mode
+    (facets/trim-buffer-name)))
 
 ;;;;; Create facets
 
