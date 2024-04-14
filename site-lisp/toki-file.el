@@ -14,6 +14,7 @@
 ;;;; Libraries
 
 (require 'consult)
+(require 'project)
 
 ;;;; User options
 
