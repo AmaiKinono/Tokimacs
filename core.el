@@ -203,9 +203,10 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
 
 ;; This is needed, or `generated-autoload-file' will be not defined as a
 ;; variable at byte-compile time.  See the comments in
-;; `straight--generate-package-autoloads'.
+;; `straight--build-autoloads'.
 (eval-and-compile
-  (require 'autoload)
+  (or (require 'loaddefs-gen nil 'noerror)
+      (require 'autoload))
   (require 'bytecomp))
 
 (defvar toki-site-lisp-build-dir
@@ -219,29 +220,43 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
 (defun toki-build-site-lisp ()
   (when toki-site-lisps-to-build
     (let ((generated-autoload-file
-           (concat toki-site-lisp-build-dir "autoloads.el")))
-      ;; Byte compile.
-      (dolist (f toki-site-lisps-to-build)
-        (byte-compile-file (concat toki-site-lisp-build-dir f)))
-      ;; Generate autoload file.  I don't know why but
-      ;; `update-directory-autoloads' seems to not work once autoloads.el is
-      ;; generated. We need to delete & regenerate it.
-      (when (file-exists-p generated-autoload-file)
-        (delete-file generated-autoload-file))
-      (with-current-buffer (find-file-noselect generated-autoload-file)
-        (insert ";; -*- lexical-binding: t -*-\n")
-        (save-buffer)
-        (kill-buffer))
-      (update-directory-autoloads toki-site-lisp-build-dir)
-      ;; Byte compile the autoload file.
-      (byte-compile-file generated-autoload-file)
-      ;; Native compile.
-      (when (native-comp-available-p)
-        (native-compile-async (list toki-site-lisp-build-dir))))))
+           (concat toki-site-lisp-build-dir "autoloads.el"))
+          (delete-by-moving-to-trash nil)
+          ;; Prevent `update-directory-autoloads' from running hooks when
+          ;; visiting the autoload file.
+          (find-file-hook nil)
+          (write-file-functions nil)
+          ;; Prevent `update-directory-autoloads' from creating backup files.
+          (backup-inhibited t)
+          (version-control 'never))
+      (cl-letf (((symbol-function #'byte-compile-log-file) #'ignore)
+                ((symbol-function #'byte-compile-nogroup-warn) #'ignore))
+        ;; Byte compile.
+        (dolist (f toki-site-lisps-to-build)
+          (byte-compile-file (concat toki-site-lisp-build-dir f)))
+        ;; Generate autoload file.  I don't know why but
+        ;; `update-directory-autoloads' seems to not work once autoloads.el is
+        ;; generated. We need to delete & regenerate it.
+        (when (file-exists-p generated-autoload-file)
+          (delete-file generated-autoload-file))
+        (with-current-buffer (find-file-noselect generated-autoload-file)
+          (insert ";; -*- lexical-binding: t -*-\n")
+          (save-buffer)
+          (kill-buffer))
+        (update-directory-autoloads toki-site-lisp-build-dir)
+        ;; Byte compile the autoload file.
+        (byte-compile-file generated-autoload-file)
+        ;; Native compile.
+        (when (native-comp-available-p)
+          (native-compile-async (list toki-site-lisp-build-dir)))))))
+
+(defun toki-build-site-lisp-and-load-autoload ()
+  (toki-build-site-lisp)
+  (load (concat toki-site-lisp-build-dir "autoloads") 'noerror 'nomessage))
 
 ;; We build after initialization so that external packages are already in
 ;; `load-path', and site-lisps depending on them could be built.
-(add-hook 'after-init-hook #'toki-build-site-lisp)
+(add-hook 'after-init-hook #'toki-build-site-lisp-and-load-autoload)
 
 ;; TODO: recompile when Emacs version changes
 (let* (;; Dir & files
@@ -254,14 +269,7 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
         (cl-remove "autoloads.elc"
                    (directory-files toki-site-lisp-build-dir nil ".elc$")
                    :test #'equal))
-       (delete-by-moving-to-trash nil)
-       ;; Prevent `update-directory-autoloads' from running hooks when visiting
-       ;; the autoload file.
-       (find-file-hook nil)
-       (write-file-functions nil)
-       ;; Prevent `update-directory-autoloads' from creating backup files.
-       (backup-inhibited t)
-       (version-control 'never))
+       (delete-by-moving-to-trash nil))
   (cl-letf (((symbol-function #'byte-compile-log-file) #'ignore)
             ((symbol-function #'byte-compile-nogroup-warn) #'ignore))
     (add-to-list 'load-path toki-site-lisp-build-dir)
@@ -283,15 +291,16 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
       (unless (member f site-lisp-symlinks)
         (make-symbolic-link (concat toki-site-lisp-dir f)
                             (concat toki-site-lisp-build-dir f)))
-      ;; Byte compile
+      ;; Record files to compile.
       (let ((byte-file (concat toki-site-lisp-build-dir f "c"))
             (site-lisp (concat toki-site-lisp-dir f)))
         (when (or (not (file-exists-p byte-file))
                   (file-newer-than-file-p site-lisp byte-file))
+          ;; Delete the byte file to prevent it being load before a fresh
+          ;; build.
+          (delete-file byte-file)
           (push f toki-site-lisps-to-build))))
-    (add-to-list 'custom-theme-load-path toki-site-lisp-build-dir)
-    ;; Load autoload file
-    (load (concat toki-site-lisp-build-dir "autoloads") 'noerror 'nomessage)))
+    (add-to-list 'custom-theme-load-path toki-site-lisp-build-dir)))
 
 ;;; Basic packages
 
