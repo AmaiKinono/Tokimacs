@@ -137,7 +137,8 @@ is automatically set by Tokimacs.")
 
 ;; TODO: `string-as-multibyte' obsoleted.
 (defvar toki/font-family-list
-  (mapcar #'string-as-multibyte (font-family-list))
+  (mapcar (lambda (s) (decode-coding-string s 'no-conversion-multibyte))
+          (font-family-list))
   "The available fonts.")
 
 (defun toki/set-default-font ()
