@@ -424,7 +424,8 @@ several seconds to avoid clash with existing facets."
       ('mod-time (facets/generate-id mod-time))
       ('user-input (facets/generate-id
                     (time-convert (encode-time (parse-time-string
-                                                (facets/read-timestamp)))))))))
+                                                (facets/read-timestamp)))
+                                  'list))))))
 
 ;;;;; Title
 
