@@ -183,5 +183,6 @@ This also add `toki/really-set-default-font' to
   "m" '(toggle-frame-maximized :wk "<> Maximize")
   "t" `(,(toki-make-combo toki-switch-theme) :wk "Switch Theme")
   "T" '(toki-load-theme :wk "Load Theme")
-  "=" `(,(toki-make-combo toki-increase-font-size) :wk "Increase Font Size")
-  "-" `(,(toki-make-combo toki-decrease-font-size) :wk "Decrease Font Size"))
+  "=" '(global-text-scale-adjust :wk "Increase Font Size")
+  "-" '(global-text-scale-adjust :wk "Decrease Font Size")
+  "0" '(global-text-scale-adjust :wk "Restore Font Size"))

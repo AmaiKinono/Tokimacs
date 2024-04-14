@@ -207,27 +207,6 @@ Run this when init to set the fonts."
   (run-with-idle-timer 0.1 nil #'toki/set-fontset-font)
   (run-with-idle-timer 0.1 nil #'toki/really-set-default-font))
 
-(defun toki-adjust-font-size (inc)
-  "Increment font size in current frame by INC."
-  (let* ((frame-height (frame-height nil))
-         (frame-width (frame-width nil))
-         (font-size-orig (font-get (face-attribute 'default :font) :size))
-         (font-size-new (+ inc font-size-orig))
-         (ratio (/ (float font-size-orig) font-size-new)))
-    (set-face-attribute 'default nil :font (font-spec :size font-size-new))
-    (set-frame-parameter nil 'width (round (* frame-width ratio)))
-    (set-frame-parameter nil 'height (round (* frame-height ratio)))))
-
-(defun toki-increase-font-size ()
-  "Increase font size in current frame."
-  (interactive)
-  (toki-adjust-font-size 2))
-
-(defun toki-decrease-font-size ()
-  "Decrease font size in current frame."
-  (interactive)
-  (toki-adjust-font-size -2))
-
 (provide 'toki-font)
 
 ;;; toki-font.el ends here
