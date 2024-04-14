@@ -15,11 +15,8 @@ The first element is used as the default theme.")
 
 ;;;; Transparency
 
-(defvar toki-active-frame-alpha 0.92
-  "Transparency of active frame.")
-
-(defvar toki-inactive-frame-alpha 0.85
-  "Transparency of inactive frame.")
+(defvar toki-frame-alpha 0.9
+  "Transparency of frame background.")
 
 ;;; Defaults
 
@@ -55,8 +52,8 @@ The first element is used as the default theme.")
 
 (blink-cursor-mode -1)
 
-(set-frame-parameter nil 'alpha
-                     (list toki-active-frame-alpha toki-inactive-frame-alpha))
+(set-frame-parameter nil 'alpha-background
+                     toki-frame-alpha)
 
 ;; Match the title bar color with current theme in macOS.
 (use-package ns-auto-titlebar
