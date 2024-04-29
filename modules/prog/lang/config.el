@@ -93,23 +93,50 @@
              "<style>
   img { max-width: 100%; }
 </style>")
-  ;; Inline format for CJK
-  (setcar (nthcdr 0 org-emphasis-regexp-components) " \t('\"{[:nonascii:]")
-  (setcar (nthcdr 1 org-emphasis-regexp-components) "- \t.,:!?;'\")}\\[[:nonascii:]")
-  (org-set-emph-re 'org-emphasis-regexp-components org-emphasis-regexp-components)
-  (org-element-update-syntax)
-  ;; Otherwise when using "_" to mark CJK parts, Org thinks it's two subscripts.
-  (setq org-use-sub-superscripts "{}")
+  ;; Inline emphasizing for CJK.  Commented as the `ox' configuration solves
+  ;; the problem in another way.
+  ;; (setcar (nthcdr 0 org-emphasis-regexp-components) " \t('\"{[:nonascii:]")
+  ;; (setcar (nthcdr 1 org-emphasis-regexp-components) "- \t.,:!?;'\")}\\[[:nonascii:]")
+  ;; (org-set-emph-re 'org-emphasis-regexp-components org-emphasis-regexp-components)
+  ;; (org-element-update-syntax)
+
   ;; LaTeX Preview
   (plist-put org-format-latex-options :scale 1.6)
   (when (executable-find "dvisvgm")
     (setq org-latex-create-formula-image-program 'dvisvgm))
+  ;; Commands
+  (defun toki-insert-zero-width-space ()
+    "Insert an zero width space."
+    (interactive)
+    (insert "\u200b"))
   ;; Keybinds
   (toki-local-def
     :keymaps 'org-mode-map
     "t" '(org-insert-structure-template :wk "Insert Template")
     "p" `(,(toki-make-combo toki-toggle-latex-preview) :wk "<> LaTeX Preview")
-    "P" '(toki-clear-latex-preview-cache :wk "Clear LaTeX Preview Cache")))
+    "P" '(toki-clear-latex-preview-cache :wk "Clear LaTeX Preview Cache")
+    "SPC" '(toki-insert-zero-width-space :wk "Insert Zero Width Space")))
+
+(use-package ox
+  :straight nil
+  :after org
+  :config
+  ;; Zero width spaces (ZWS) are recommended to resolve conflict between plain
+  ;; text and markups.  So, in the final export, we remove single ZWSs.  If you
+  ;; want to include n ZWSs, you should type n+1 ZWSs.
+
+  ;; This is mainly used for CJK emphasizing, which was solved by setting
+  ;; `org-emphasis-regexp-components' before.  Unfortunately the exporters
+  ;; doesn't respect that variable, which may due to that fontification and
+  ;; parser are inconsistent in org-mode
+  ;; (https://list.orgmode.org/87ee7c9quk.fsf@localhost/).
+  (defun toki/org-export-unescape-zero-width-space (text _backend _info)
+    "Unescape zero width spaces in org export."
+    (unless (org-export-derived-backend-p 'org)
+      (replace-regexp-in-string (rx "\u200b" (group (* "\u200b")))
+                                "\\1" text)))
+  (add-to-list 'org-export-filter-final-output-functions
+               #'toki/org-export-unescape-zero-width-space t))
 
 ;;; Web
 
