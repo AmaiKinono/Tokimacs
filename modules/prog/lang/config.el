@@ -102,7 +102,6 @@
   ;; (org-element-update-syntax)
 
   ;; LaTeX Preview
-  (plist-put org-format-latex-options :scale 1.6)
   (when (executable-find "dvisvgm")
     (setq org-latex-create-formula-image-program 'dvisvgm))
   ;; Commands
@@ -111,12 +110,17 @@
     (interactive)
     (insert "\u200b"))
   ;; Keybinds
+  (general-unbind
+    :keymaps 'org-mode-map
+    ;; "C-'" is bind to `isearch-backward-regexp' by us.
+    "C-'")
   (toki-local-def
     :keymaps 'org-mode-map
-    "t" '(org-insert-structure-template :wk "Insert Template")
-    "p" `(,(toki-make-combo toki-toggle-latex-preview) :wk "<> LaTeX Preview")
-    "P" '(toki-clear-latex-preview-cache :wk "Clear LaTeX Preview Cache")
-    "SPC" '(toki-insert-zero-width-space :wk "Insert Zero Width Space")))
+    "b" '("Edit Block" . org-edit-special)
+    "t" '("Insert Template" . org-insert-structure-template)
+    "p" `("<> LaTeX Preview" . ,(toki-make-combo toki-toggle-latex-preview))
+    "P" '("Clear LaTeX Preview Cache" . toki-clear-latex-preview-cache)
+    "SPC" '("Insert Zero Width Space" . toki-insert-zero-width-space)))
 
 (use-package ox
   :straight nil
