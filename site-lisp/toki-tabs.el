@@ -289,7 +289,7 @@ buffer, technically it's not in the tabs, and is still considered
 \"invisible\" by `toki-tabs-kill-invisible-buffers-in-group'.
 
 Current and non-active buffers are distinguished by faces."
-  (let* ((current-buf (current-buffer))
+  (let* ((current-buf (window-buffer (minibuffer-selected-window)))
          (tabs-and-remain (toki-tabs-visible-tabs-and-remain-num))
          (tabs (car tabs-and-remain))
          (tab-visible-p (memq current-buf tabs))
