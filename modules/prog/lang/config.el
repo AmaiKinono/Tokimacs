@@ -87,7 +87,8 @@
              org-link-descriptive nil
              org-edit-src-content-indentation 0
              org-image-actual-width
-             (list (/ (min (display-pixel-height) (display-pixel-width)) 2.5)))
+             (list (round (/ (min (display-pixel-height) (display-pixel-width))
+                             2.5))))
   ;; HTML export style
   (toki/setq org-html-head
              "<style>
