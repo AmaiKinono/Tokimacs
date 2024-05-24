@@ -78,6 +78,8 @@
 ;; `outline-hide-body'.  Another way is to run `occur' with the query:
 ;; ^;;;;* \|^(
 
+;; TODO: solve the link export problem
+
 ;;;; Libraries
 
 (require 'cl-lib)
@@ -956,6 +958,7 @@ If the frontmatter is not presented, return nil."
         (when (search-forward-regexp (rx bol "#+" (literal attr) ":")
                                      nil 'noerror)
           (pcase attr
+            ;; TODO: trim markups for title?
             ((or "TITLE" "FACET-ID")
              (setq result
                    (string-trim
