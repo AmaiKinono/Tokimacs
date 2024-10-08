@@ -332,7 +332,9 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
   :straight nil)
 
 (use-package no-littering
-  :trigger after-init-hook)
+  :trigger after-init-hook
+  :config
+  (no-littering-theme-backups))
 
 ;; Integrate system clipboard with Emacs in terminal.
 (use-package xclip
