@@ -169,7 +169,8 @@ This also add `toki/really-set-default-font' to
 (when (not toki-gui-p)
   (set-face-attribute 'vertical-border nil :background 'unspecified))
 
-(setq ring-bell-function #'toki-blink-mode-line)
+(setq ring-bell-function #'toki-blink-mode-line
+      eldoc-echo-area-use-multiline-p nil)
 
 ;; toki-blink provides a simple command `toki-blink' to blink current line.
 (use-package toki-blink
