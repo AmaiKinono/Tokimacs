@@ -11,6 +11,15 @@
 ;; Use conf-mode for dotfiles.
 (add-to-list 'auto-mode-alist '("/\\.[^/]*\\'" . conf-mode))
 
+;;; Tree Sitter
+
+;; Run `treesit-auto-install-all' to install all grammars.
+(use-package treesit-auto
+  :trigger find-file-noselect
+  :config
+  (treesit-auto-add-to-auto-mode-alist)
+  (global-treesit-auto-mode))
+
 ;;; Elisp
 
 (defun toki/sentence-end-double-space-for-elisp ()

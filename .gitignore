@@ -4,6 +4,7 @@ straight/
 var/
 etc/
 eln-cache/
+tree-sitter/
 tramp
 .*
 !.gitignore
