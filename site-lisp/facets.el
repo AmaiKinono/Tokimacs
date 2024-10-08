@@ -526,9 +526,9 @@ The bounds is returned as a cons pair."
           (regexp (car facets/link-regexp))
           (group (nth 2 facets/link-regexp)))
       (goto-char (line-beginning-position))
-      (when (and (re-search-forward regexp (line-end-position) t)
-                 (<= (match-beginning 0) pt (match-end 0)))
-        (cons (match-beginning group) (match-end group))))))
+      (cl-loop while (re-search-forward regexp (line-end-position) t)
+               if (<= (match-beginning 0) pt (match-end 0))
+               return (cons (match-beginning group) (match-end group))))))
 
 (defun facets/link-id-at-point ()
   "Get the id in the link at point."
