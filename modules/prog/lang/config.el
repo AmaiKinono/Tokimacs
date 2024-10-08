@@ -20,6 +20,11 @@
   (treesit-auto-add-to-auto-mode-alist)
   (global-treesit-auto-mode))
 
+;;; CMake
+
+(add-to-list 'auto-mode-alist '("CMakeLists\\.txt\\'" . cmake-mode))
+(add-to-list 'auto-mode-alist '("\\.cmake\\'" . cmake-mode))
+
 ;;; Elisp
 
 (defun toki/sentence-end-double-space-for-elisp ()
