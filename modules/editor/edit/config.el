@@ -338,14 +338,15 @@ See the docstring of `replace-string' for details."
 (defun toki-grep ()
   "Run ripgrep, git-grep or grep."
   (interactive)
-  (cond
-   ((executable-find "rg" 'remote)
-    (consult-ripgrep 'prompt-dir))
-   ((and (vc-git-root default-directory)
-         (executable-find "git" 'remote))
-    (consult-git-grep 'prompt-dir))
-   ((executable-find "grep" 'remote)
-    (consult-grep 'prompt-dir))))
+  (let ((default-directory (or (toki-project-root) default-directory)))
+    (cond
+     ((executable-find "rg" 'remote)
+      (consult-ripgrep 'prompt-dir))
+     ((and (vc-git-root default-directory)
+           (executable-find "git" 'remote))
+      (consult-git-grep 'prompt-dir))
+     ((executable-find "grep" 'remote)
+      (consult-grep 'prompt-dir)))))
 
 ;;;; Edit
 
