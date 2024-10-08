@@ -115,9 +115,16 @@
   ;; (org-set-emph-re 'org-emphasis-regexp-components org-emphasis-regexp-components)
   ;; (org-element-update-syntax)
 
-  ;; LaTeX Preview
+  ;; LaTeX Editing
   (when (executable-find "dvisvgm")
     (setq org-latex-create-formula-image-program 'dvisvgm))
+  (toki/setq org-pretty-entities t
+             org-pretty-entities-include-sub-superscripts nil)
+  (add-hook 'org-mode-hook
+            (defun toki/org-prettify-entities ()
+              (setq-local org-pretty-entities t)))
+  (add-hook 'org-mode-hook #'org-cdlatex-mode)
+
   ;; Commands
   (defun toki-insert-zero-width-space ()
     "Insert an zero width space."
@@ -134,6 +141,7 @@
     "t" '("Insert Template" . org-insert-structure-template)
     "p" `("<> LaTeX Preview" . ,(toki-make-combo toki-toggle-latex-preview))
     "P" '("Clear LaTeX Preview Cache" . toki-clear-latex-preview-cache)
+    "e" '("<> Prettify Entities" . org-toggle-pretty-entities)
     "SPC" '("Insert Zero Width Space" . toki-insert-zero-width-space)))
 
 (use-package ox
@@ -156,6 +164,29 @@
                                 "\\1" text)))
   (add-to-list 'org-export-filter-final-output-functions
                #'toki/org-export-unescape-zero-width-space t))
+
+;;; LaTeX
+
+;; TODO: Hack `cdlatex-lr-pair'
+(use-package cdlatex
+  :defer t
+  :config
+  (toki/setq cdlatex-command-alist
+             '(("op" "Insert a \\operator{} statement"
+                "\\operatorname{?}" cdlatex-position-cursor nil nil t)
+               ("im" "Insert a inline math environment"
+                "\\(?\\)" cdlatex-position-cursor nil t nil)
+               ("dm" "Insert a display math environment"
+                "\\[?\\]" cdlatex-position-cursor nil t nil)
+               ("equ*" "Insert an EQUATION* environment template"
+                "" cdlatex-environment ("equation*") t nil)))
+  (toki/setq cdlatex-math-modify-alist
+             '((?B "\\mathbb" nil t nil nil)))
+  (toki/setq cdlatex-insert-auto-labels-in-env-templates nil))
+
+;; AUCTeX offers `texmathp' that CDLaTeX requires.
+(use-package auctex
+  :defer t)
 
 ;;; Web
 
