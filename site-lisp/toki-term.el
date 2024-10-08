@@ -120,11 +120,16 @@ in it, or \"idle\" if the terminal is not running any program."
           (or (toki-term/term-buf-child-proc-name buf)
               "(idle)")))
 
-(defun toki-term/get-visible-term-bufs ()
-  "Get visible term buffers."
+(defun toki-term/get-visible-term-bufs (&optional idle-only)
+  "Get visible term buffers.
+If IDLE-ONLY is non-nil, only terminals that isn't running any
+program counts."
   (seq-filter (lambda (buf)
                 (with-current-buffer buf
-                  (derived-mode-p 'term-mode)))
+                  (and (derived-mode-p 'term-mode)
+                       (if idle-only (toki-term/term-buf-child-proc-name
+                                      (current-buffer))
+                         t))))
               (mapcar #'window-buffer (window-list))))
 
 (defun toki-term/create-term (&optional dir)
@@ -152,6 +157,36 @@ If the terminal isn't running any program, return nil."
   (or toki-term-shell-program explicit-shell-file-name
       (getenv "SHELL") shell-file-name
       (read-file-name "Shell executable: " "/" nil t)))
+
+;;;; APIs
+
+;;;###autoload
+(defun toki-term-send-text-to-visible-term
+    (str &optional idle-only new-term dir nobracket)
+  "Send text STR to a visible term buffer and pop to that buffer.
+If IDLE-ONLY is non-nil, only terminals that isn't running any
+program counts.  If NEW-TERM is non-nil, create a term in
+DIR (which is optional too).  If NOBRACKET is non-nil, don't send
+bracket chars based on `toki-term-bracketed-paste-programs'."
+  (let ((bufs (toki-term/get-visible-term-bufs idle-only))
+        buf)
+    (pcase (length bufs)
+      (0 (if new-term (setq buf (toki-term/create-term dir))
+           (user-error "No visible term buffer")))
+      (1 (setq buf (car bufs)))
+      (_ (setq buf (completing-read
+                    "Term: "
+                    (mapcar (lambda (buf)
+                              (cons (toki-term/buf-desc buf) buf))
+                            bufs)
+                    nil t))))
+    (when (member (toki-term/term-buf-child-proc-name buf)
+                  toki-term-bracketed-paste-programs)
+      (setq str (if nobracket str
+                  (concat toki-term/open-bracket
+                          str toki-term/close-bracket))))
+    (process-send-string buf str)
+    (pop-to-buffer buf)))
 
 ;;;; Create/switch to term commands
 
@@ -262,23 +297,8 @@ see the package description of `toki-term'."
   (interactive)
   (unless (use-region-p)
     (user-error "No active region"))
-  (let ((bufs (toki-term/get-visible-term-bufs))
-        buf)
-    (pcase (length bufs)
-      (0 (user-error "No visible term buffer"))
-      (1 (setq buf (car bufs)))
-      (_ (setq buf (completing-read
-                    "Term: "
-                    (mapcar (lambda (buf)
-                              (cons (toki-term/buf-desc buf) buf))
-                            bufs)
-                    nil t))))
-    (let ((bracketed-p (member (toki-term/term-buf-child-proc-name buf)
-                               toki-term-bracketed-paste-programs)))
-      (when bracketed-p (process-send-string buf toki-term/open-bracket))
-      (process-send-region buf (region-beginning) (region-end))
-      (when bracketed-p (process-send-string buf toki-term/close-bracket)))
-    (pop-to-buffer buf)))
+  (toki-term-send-text-to-visible-term
+   (buffer-substring (region-beginning) (region-end))))
 
 (provide 'toki-term)
 
