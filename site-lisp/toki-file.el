@@ -50,6 +50,38 @@ See `consult-find-command'.")
        (cl-some (lambda (f) (file-exists-p (expand-file-name f dir)))
                 toki-project-root-files)))))
 
+;;;###autoload
+(defun toki-file-binary-p (file)
+  "Guess if FILE is a binary file."
+  (with-temp-buffer
+    (insert-file-contents-literally file nil 0 256)
+    (goto-char (point-min))
+    ;; Check BOMs that contain control chars.
+    (cond
+     ((looking-at "\x00\x00\xFE\xFF") (forward-char 4))
+     ((looking-at "\xFF\xFE\x00\x00") (forward-char 4))
+     ((looking-at "\x0E\xFE\xFF") (forward-char 4)))
+    (cl-loop
+     while (not (eobp))
+     do (let ((char (char-after)))
+          ;; Check control char
+          (if (and (< char 32) (not (memq char '(?\n ?\r ?\t))))
+              (cl-return t)
+            (forward-char))))))
+
+;;;###autoload
+(defun toki-get-executables ()
+  "Returns a list of all executables in PATH."
+  (let ((dirs (split-string (getenv "PATH") path-separator))
+        executables)
+    (dolist (d dirs)
+      (when (file-accessible-directory-p d)
+        (dolist (f (directory-files d 'full nil 'nosort))
+          (when (and (file-executable-p f)
+                     (not (file-directory-p f)))
+            (push (file-name-nondirectory f) executables)))))
+    (delete-dups executables)))
+
 ;;;; Commands
 
 ;;;###autoload

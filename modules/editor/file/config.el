@@ -48,7 +48,113 @@
   (let ((inhibit-message t))
     (epa-file-enable)))
 
-;;; Window
+(use-package dired
+  :straight nil
+  :defer t
+  :config
+  (toki/setq
+   dired-kill-when-opening-new-dired-buffer t)
+
+  (defun toki-dired-term ()
+    "Open a terminal in current directory in a dired buffer."
+    (interactive)
+    (toki-term default-directory))
+
+  (defun toki-dired-execute-in-term ()
+    "Run executable at point in a terminal."
+    (interactive)
+    (let ((f (dired-get-file-for-visit)))
+      (toki-term-send-text-to-visible-term
+       ;; When there's double quote in the file name, this may cause shell
+       ;; injection.
+       (concat "\"./" (file-name-nondirectory f) "\"\n")
+       'idle-only 'new-term default-directory)))
+
+  (defun toki-dired-find-file ()
+    "Like `dired-find-file', but open binaries externally and run executables."
+    (interactive)
+    (let ((f (dired-get-file-for-visit)))
+      (cond
+       ((file-directory-p f) (dired-find-file))
+       ((not (toki-file-binary-p f)) (dired-find-file))
+       (t (cond
+           ;; Visit compressed files directly.
+           ((cl-dolist (s dired-compress-file-suffixes)
+              (when (string-match (car s) f)
+                (cl-return t)))
+            (dired-find-file))
+           ;; NOTE: `file-executable-p' can return t on non-executable files in
+           ;; NTFS drives.  Haven't find a good way to fix that.
+           ((file-executable-p f) (toki-dired-execute-in-term))
+           (t (browse-url-of-dired-file)))))))
+
+  (defun toki-dired-open-with ()
+    "Open file at point with program."
+    (interactive)
+    (let ((f (dired-get-file-for-visit))
+          (prog (completing-read "Program: " (toki-get-executables))))
+      (start-process prog nil prog f)))
+
+  (setq dired-mode-map (make-sparse-keymap))
+  (general-def
+    :keymaps 'dired-mode-map
+    "h" '(dired-up-directory :wk "Prev")
+    "<left>" '(dired-up-directory :wk "Prev")
+    "j" '(dired-next-line :wk "Next")
+    "<down>" '(dired-next-line :wk "Next")
+    "k" '(dired-previous-line :wk "Prev")
+    "<up>" '(dired-previous-line :wk "Prev")
+    "l" '(toki-dired-find-file :wk "Open")
+    "<right>" '(toki-dired-find-file :wk "Open")
+    "r" '(revert-buffer :wk "Revert")
+    "RET" '(dired-find-file :wk "Open")
+    [remap isearch-forward-regexp] '(dired-isearch-filenames-regexp
+                                     :wk "Search Regexp")
+    [remap isearch-forward] '(dired-isearch-forward :wk "Search Literally")
+
+    "c" '(:wk "Compress")
+    "cc" '(dired-do-compress-to :wk "Compress Marked Files")
+    "cu" '(dired-do-compress :wk "Uncompress")
+
+    "e" '(:wk "Edit")
+    "ee" '(wdired-change-to-wdired-mode :wk "Edit")
+    "ek" '(dired-do-kill-lines :wk "Flush Lines")
+    "ec" '(dired-copy-filename-as-kill :wk "Copy File Name")
+
+    "f" '(:wk "File")
+    "fo" '(dired-find-file :wk "Open File in Emacs")
+    "fO" '(dired-find-file-other-window :wk "Open in Other Window")
+    "fe" '(browse-url-of-dired-file :wk "Open Externally")
+    "fr" '(toki-dired-execute-in-term :wk "Run")
+    "fw" '(toki-dired-open-with :wk "Open With")
+    "fc" '(dired-do-copy :wk "Copy")
+    "fR" '(dired-do-rename :wk "Rename")
+    "fD" '(dired-do-delete :wk "Delete")
+
+    "d" '(:wk "Dir")
+    "di" '(dired-maybe-insert-subdir :wk "Add This Dir")
+    "df" '(dired-hide-subdir :wk "<> Fold This Dir")
+    "dk" '(dired-kill-subdir :wk "Remove This Dir")
+
+    "m" '(:wk "Mark")
+    "mm" '(dired-mark :wk "Mark")
+    "mu" '(dired-unmark :wk "Unmark")
+    "mU" '(dired-unmark-all-marks :wk "Unmark All")
+    "mr" '(dired-mark-files-containing-regexp
+           :wk "Mark Files Containing Regexp")
+    "mR" '(dired-mark-files-regexp :wk "Mark Files Matching Regexp")
+    "mi" '(dired-toggle-marks :wk "Invert Mark")
+
+    "n" '(:wk "New")
+    "nd" '(dired-create-directory :wk "New Directory")
+    "nf" '(dired-create-empty-file :wk "New File")
+
+    "t" '(:wk "Toggle/Term")
+    "th" '(dired-omit-mode :wk "<> Hidden File")
+    "td" '(dired-hide-details-mode :wk "<> Details")
+    "tt" '(toki-dired-term :wk "Term in Current Dir")))
+
+;;; window
 
 (setq mouse-autoselect-window t)
 
@@ -92,6 +198,7 @@
   "C-s" 'save-buffer)
 
 (toki-file-def
+  "d" '(dired-jump :wk "Dired Here")
   "n" '(toki-new-file :wk "New File")
   "s" '(save-buffer :wk "Save File")
   "S" '(write-file :wk "Save As")
