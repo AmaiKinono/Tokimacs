@@ -75,6 +75,17 @@
   (add-to-list 'toki-tabs-update-hook #'toki-modeline/refresh-active-modeline)
   (setq toki-tabs-project-root-function #'toki-project-root))
 
+(with-eval-after-load 'consult
+  (define-advice consult--buffer-pair (:around (_ buffer) show-path)
+    "Also show path for file buffers so the user can filter them by path."
+    (let ((dir (or (toki-project-root) default-directory))
+          name)
+      (if-let ((path (buffer-file-name buffer)))
+          (progn (when (file-in-directory-p path dir)
+                   (setq path (file-relative-name path dir)))
+                 (cons path buffer))
+        (cons (buffer-name buffer) buffer)))))
+
 ;;; Keybinds
 
 (general-def
