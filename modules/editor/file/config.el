@@ -175,11 +175,19 @@
 
 (use-package toki-tabs
   :straight nil
-  :after toki-modeline
+  :trigger 'emacs-startup-hook
   :config
+  (toki/setq toki-tabs-project-root-function #'toki-project-root
+             toki-tabs-visible-buffer-limit nil)
   (toki-tabs-mode)
-  (add-to-list 'toki-tabs-update-hook #'toki-modeline/refresh-active-modeline)
-  (setq toki-tabs-project-root-function #'toki-project-root))
+  ;; Needed for tabs in modeline.
+  ;; (add-to-list 'toki-tabs-update-hook #'toki-modeline/refresh-active-modeline)
+  (setq tab-bar-format '(toki-tabs-tab-bar-format))
+  (face-spec-set 'tab-bar
+                 '((t :inherit default
+                      :height 0.95
+                      :background unspecified)))
+  (tab-bar-mode))
 
 (with-eval-after-load 'consult
   (define-advice consult--buffer-pair (:around (_ buffer) show-path)
@@ -225,6 +233,9 @@
   "n" '(toki-new-buffer :wk "New Buffer")
   "k" '(kill-current-buffer :wk "Kill This")
   "K" '(toki-window-kill-other-buffer :wk "Kill Another")
+  "g" '(toki-tabs-switch-to-buffer-in-other-group :wk "Switch Buffer by Group")
+  "G" '(toki-tabs-kill-buffers-in-other-group :wk "Kill Buffer Group")
+  "D" '(toki-tabs-kill-buffers-in-directory :wk "Kill Buffer in Dir")
   "b" '(consult-buffer :wk "Switch Buffer")
   "p" '(previous-buffer :wk "Prev Buffer")
   "P" '(toki-window-prev-buffer-in-another-window :wk "Prev Buf in Another Window")
@@ -233,6 +244,4 @@
 
 (toki-tab-def
   "b" `(,(toki-make-combo toki-tabs-previous) :wk "Prev Tab")
-  "f" `(,(toki-make-combo toki-tabs-next) :wk "Next Tab")
-  "k" '(toki-tabs-kill-invisible-buffers-in-group :wk "Keep Visible in Group")
-  "K" '(toki-tabs-kill-buffers-in-group :wk "Kill Buffer Group"))
+  "f" `(,(toki-make-combo toki-tabs-next) :wk "Next Tab"))

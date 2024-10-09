@@ -324,7 +324,7 @@ Return nil if the dir isn't version controlled."
 (defvar toki-modeline-left-format
   (list " "
         '(:eval (toki-modeline-pad (toki-modeline-winum)))
-        '(:eval (toki-modeline-pad (toki-modeline-tabs))))
+        '(:eval (toki-modeline-pad (toki-modeline-path))))
   "Modeline format for displaying in the left.")
 
 (defvar toki-modeline-inactive-left-format
