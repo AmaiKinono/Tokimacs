@@ -108,6 +108,32 @@
       ""
     (concat str " ")))
 
+;; This is modified from `string-replace' in subr.el
+(defun toki-modeline/string-replace-keep-properties (from to str)
+  "Replace FROM with TO in STR, keep text properties of replaced text."
+  (declare (pure t) (side-effect-free t))
+  (when (equal from "")
+    (signal 'wrong-length-argument '(0)))
+  (let ((start 0)
+        (result nil)
+        pos props)
+    (while (setq pos (string-search from str start))
+      (unless (= start pos)
+        (push (substring str start pos) result))
+      (setq props (text-properties-at pos str))
+      (set-text-properties 0 (length to) props to)
+      (push to result)
+      (setq start (+ pos (length from))))
+    (if (null result)
+        str
+      (unless (= start (length str))
+        (push (substring str start) result))
+      (apply #'concat (nreverse result)))))
+
+(defun toki-modeline/escape (str)
+  "Make STR show literally when used as a mode-line construct."
+  (toki-modeline/string-replace-keep-properties "%" "%%" str))
+
 (defun toki-modeline-shrink-dir (name)
   "Shrink NAME.
 This is used in the path info."
@@ -120,7 +146,6 @@ This is used in the path info."
 
 (defun toki-modeline/right-align-space (string)
   "Return a propertized space that aligns STRING to the right."
-  (setq string (replace-regexp-in-string "%%" "%" string))
   (let ((len (string-width string)))
     (if (display-graphic-p)
         (let ((height (face-attribute 'mode-line :height))
@@ -148,7 +173,7 @@ This is used in the path info."
             ("Top" "0%")
             ("Bottom" "100%")
             (val val)))
-    (concat (format-mode-line "%l:%c") " " percent "%%%")))
+    (concat (format-mode-line "%l:%c") " " percent)))
 
 (defun toki-modeline-path ()
   "Return the path info."
@@ -217,17 +242,15 @@ Return nil if the dir isn't version controlled."
 (defun toki-modeline-vc ()
   "Return the VCS info."
   (or (and buffer-file-name (toki-modeline--vc-file))
-      (toki-modeline--vc-dir)
-      ""))
+      (toki-modeline--vc-dir)))
 
 (defun toki-modeline-evil ()
   "Return the evil state."
-  (if (bound-and-true-p evil-mode)
-      (let ((tag (evil-state-property evil-state :tag t)))
-        (when (functionp tag)
-          (setq tag (funcall tag)))
-        (string-trim tag))
-    ""))
+  (when (bound-and-true-p evil-mode)
+    (let ((tag (evil-state-property evil-state :tag t)))
+      (when (functionp tag)
+        (setq tag (funcall tag)))
+      (string-trim tag))))
 
 (defun toki-modeline-battery ()
   "Return battery state."
@@ -263,22 +286,23 @@ Return nil if the dir isn't version controlled."
 
 (defun toki-modeline-winum ()
   "Return window number info provided by `winum-mode'."
-  (if (bound-and-true-p winum-mode)
-      (propertize (concat "#" (format "%s" (winum-get-number)))
-                  'face 'toki-modeline-winum-face)
-    ""))
+  (when (bound-and-true-p winum-mode)
+    (propertize (concat "#" (format "%s" (winum-get-number)))
+                'face 'toki-modeline-winum-face)))
 
 (defun toki-modeline-tabs ()
   "Return tabs."
-  (if (bound-and-true-p toki-tabs-mode)
-      (toki-tabs-string)
-    ""))
+  (when (bound-and-true-p toki-tabs-mode)
+    (toki-tabs-string)))
 
 (defun toki-modeline-view-mode ()
-  "Indicator of view-mode."
-  (if view-mode
-      (propertize "<V>" 'face 'toki-modeline-view-mode-face)
-    ""))
+  "Indicator of `view-mode'."
+  (when view-mode
+    (propertize "<V>" 'face 'toki-modeline-view-mode-face)))
+
+(defun toki-modeline-mode-name ()
+  "Return mode name."
+  (format-mode-line mode-name))
 
 ;;;; Internals
 
@@ -291,7 +315,7 @@ Return nil if the dir isn't version controlled."
     (setq toki-modeline/selected-window (frame-selected-window frame))
     (toki-modeline/refresh-modeline)))
 
-(defvar-local toki-modeline/cache (make-hash-table :test #'eq))
+(defvar toki-modeline/cache (make-hash-table :test #'eq))
 
 (defvar toki-modeline/trigger-timer nil
   "The timer for triggering first update after idle.")
@@ -301,70 +325,71 @@ Return nil if the dir isn't version controlled."
 
 ;;;; Modeline formats
 
-(defvar toki-modeline-main-format
-  (list
-   '(:eval (toki-modeline-pad
-            (propertize (toki-modeline-location) 'face 'toki-modeline-location-face)))
-   '(:eval (toki-modeline-pad
-            (propertize (toki-modeline-vc) 'face 'toki-modeline-vc-face)))
-   '(:eval (toki-modeline-pad
-            (propertize (format-mode-line mode-name) 'face 'toki-modeline-mode-face)))
-   '(:eval (propertize (toki-modeline-evil) 'face 'toki-modeline-evil-face))
-   '(:eval (toki-modeline-pad (toki-modeline-view-mode))))
-  "Modeline format for active window.")
+(defvar toki-modeline-right-format
+  '((toki-modeline-location . toki-modeline-location-face)
+    (toki-modeline-vc . toki-modeline-vc-face)
+    (toki-modeline-mode-name . toki-modeline-mode-face)
+    (toki-modeline-evil . toki-modeline-evil-face)
+    toki-modeline-view-mode)
+  "Modeline format (right part) for active window.")
 
-(defvar toki-modeline-inactive-format
-  (list
-   '(:eval (toki-modeline-pad
-            (propertize (toki-modeline-location) 'face 'toki-modeline-location-face)))
-   '(:eval (toki-modeline-pad
-            (propertize (format-mode-line mode-name) 'face 'toki-modeline-mode-face))))
-  "Modeline format for inaactive window.")
+(defvar toki-modeline-inactive-right-format
+  '(toki-modeline-location
+    toki-modeline-mode-name)
+  "Modeline format (right part) for inactive window.")
 
 (defvar toki-modeline-left-format
-  (list " "
-        '(:eval (toki-modeline-pad (toki-modeline-winum)))
-        '(:eval (toki-modeline-pad (toki-modeline-path))))
-  "Modeline format for displaying in the left.")
+  '(" "
+    (toki-modeline-winum . toki-modeline-winum-face)
+    (toki-modeline-path . toki-modeline-path-face))
+  "Modeline format (left part) for active window.")
 
 (defvar toki-modeline-inactive-left-format
-  (list " "
-        '(:eval (toki-modeline-pad (toki-modeline-winum)))
-        '(:eval (toki-modeline-pad
-                 (propertize (buffer-name) 'face 'toki-modeline-path-face)))))
+  '(" "
+    toki-modeline-winum
+    buffer-name)
+  "Modeline format (left part) for inactive window.")
 
-;; NOTE: Currently unused.
-(defvar toki-modeline-additional-format
-  (list
-   '(:eval (toki-modeline-pad
-            (toki-modeline-battery)))
-   '(:eval (propertize (toki-modeline-time) 'face 'toki-modeline-time-face)))
-  "Modeline format showing battery and time info.")
+(defun toki-modeline/format-item (item)
+  "Format a component ITEM in toki-modeline's mode line format."
+  (cond
+   ((symbolp item) (toki-modeline-pad (or (funcall item) "")))
+   ((stringp item) item)
+   ((consp item) (toki-modeline-pad (propertize (or (funcall (car item)) "")
+                                                'face (cdr item))))
+   (t (error "Unsupported type of item"))))
+
+(defun toki-modeline/format (items)
+  "Format ITEMS, a list of components."
+  (string-join (mapcar #'toki-modeline/format-item items)))
 
 (defun toki-modeline-compute (&optional force)
   "Compute the modeline content for current window.
 The result is cached.  If FORCE is non-nil, recompute and rewrite
 the cache."
   (let ((active-window-p (eq (selected-window) toki-modeline/selected-window))
-        format)
-    (setq format
+        fmt)
+    (setq fmt
           (if (or force
                   (null (gethash (selected-window) toki-modeline/cache)))
-              (let* ((l (format-mode-line (if active-window-p
-                                              toki-modeline-left-format
-                                            toki-modeline-inactive-left-format)))
-                     (r (string-trim (format-mode-line
+              (let* ((l (toki-modeline/format
+                         (if active-window-p
+                             toki-modeline-left-format
+                           toki-modeline-inactive-left-format)))
+                     (r (string-trim (toki-modeline/format
                                       (if active-window-p
-                                          toki-modeline-main-format
-                                        toki-modeline-inactive-format))))
+                                          toki-modeline-right-format
+                                        toki-modeline-inactive-right-format))))
                      (pad (toki-modeline/right-align-space r))
-                     (format (list l pad r)))
-                (puthash (selected-window) format toki-modeline/cache)
-                format)
+                     (fmt (list (toki-modeline/escape l)
+                                pad
+                                (toki-modeline/escape r))))
+                (puthash (selected-window) fmt toki-modeline/cache)
+                fmt)
             (gethash (selected-window) toki-modeline/cache)))
     (if active-window-p
-        format
-      (mapcar (lambda (s) (propertize s 'face nil)) format))))
+        fmt
+      (mapcar (lambda (s) (propertize s 'face nil)) fmt))))
 
 (defun toki-modeline/refresh-modeline ()
   "Recompute and refresh modeline."
@@ -378,10 +403,18 @@ the cache."
   (toki-modeline-compute 'force)
   (force-mode-line-update))
 
+(defun toki-modeline/cleanup-cache ()
+  "Cleanup unused windows in toki-modeline cache."
+  (dolist (w (hash-table-keys toki-modeline/cache))
+    (unless (window-live-p w)
+      (remhash w toki-modeline/cache))))
+
 (defun toki-modeline-setup ()
   "Setup modeline."
   (add-hook 'window-selection-change-functions
             #'toki-modeline/update-selected-window)
+  (add-hook 'window-configuration-change-hook
+            #'toki-modeline/cleanup-cache)
   (toki-modeline/update-selected-window (selected-frame))
   (setq toki-modeline/trigger-timer
         (run-with-idle-timer toki-modeline-update-after-idle-time
