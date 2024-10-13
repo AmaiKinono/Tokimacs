@@ -72,28 +72,28 @@ update the UI.")
 (defface toki-tabs-current-tab-face
   '((((background light))
      :background "#d5c9c0" :foreground "#282828"
-     :bold t :inherit mode-line-active)
+     :bold t)
     (t
      :background "#504945" :foreground "#fbf1c7"
-     :bold t :inherit mode-line-active))
+     :bold t))
   "Face for current tab.")
 
 (defface toki-tabs-inactive-tab-face
   '((((background light))
-     :foreground "#665c54" :inherit 'mode-line-active)
+     :foreground "#665c54" :bold nil)
     (t
-     :foreground "#bdae93" :bold nil :inherit 'mode-line-active))
+     :foreground "#bdae93" :bold nil))
   "Face for inactive tabs.")
 
 (defface toki-tabs-separator-face
   '((((background light))
-     :foreground "#bdae93" :bold t :inherit 'mode-line-active)
+     :foreground "#bdae93" :bold t)
     (t
-     :foreground "#665c54" :bold t :inherit 'mode-line-active))
+     :foreground "#665c54" :bold t))
   "Face for separator.")
 
 (defface toki-tabs-rest-face
-  '((t :italic t :bold nil :inherit 'mode-line-active))
+  '((t :italic t :bold nil))
   "Face for current tab.")
 
 ;;;; Internals

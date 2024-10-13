@@ -185,7 +185,7 @@
   (setq tab-bar-format '(toki-tabs-tab-bar-format))
   (face-spec-set 'tab-bar
                  '((t :inherit default
-                      :height 0.95
+                      :height 0.9
                       :background unspecified)))
   (tab-bar-mode))
 

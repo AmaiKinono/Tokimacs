@@ -82,7 +82,8 @@ The first element is used as the default theme.")
      ;; Cursor should be light (on dark themes, vice versa).
      '((cursor :background base06)
        ;; Error should be in the same color as keywords.
-       (error :foreground base0E)))
+       (error :foreground base0E)
+       (mode-line-active :box base03)))
     (funcall fn theme-name theme-colors)))
 
 (use-package toki-base16-gruvbox-theme
@@ -158,7 +159,7 @@ This also add `toki/really-set-default-font' to
                           :inherit 'mode-line))
     (set-face-attribute 'mode-line-inactive nil
                         :background bg :height 0.9
-                        :bold t :inherit 'shadow)))
+                        :inherit 'shadow)))
 
 (add-hook 'toki-after-load-theme-hook #'toki/modeline-refresh-face)
 
