@@ -213,7 +213,12 @@ This is used in the path info."
 Return nil if the file isn't version controlled."
   (when-let* ((file buffer-file-name)
               (backend (ignore-errors
-                         (vc-responsible-backend file))))
+                         (vc-responsible-backend file)))
+              ;; `vc-mode' can actually be nil when `backend' is non-nil, e.g.,
+              ;; in git commit message buffer.
+              (branch (when vc-mode
+                        (substring vc-mode (+ (if (eq backend 'Hg) 2 3)
+                                              2)))))
     (concat
      (pcase (vc-state file backend)
        ((or 'up-to-date 'edited 'nil) "@")
@@ -222,7 +227,7 @@ Return nil if the file isn't version controlled."
        ('added "+")
        ((and (pred stringp) state) (concat state ":"))
        (_ "?"))
-     (substring vc-mode (+ (if (eq backend 'Hg) 2 3) 2)))))
+     branch)))
 
 (defun toki-modeline--vc-dir ()
   "Return VCS info for current directory buffer.
