@@ -95,6 +95,12 @@
           (prog (completing-read "Program: " (toki-get-executables))))
       (start-process prog nil prog f)))
 
+  (defun toki-dired-find-dir-new-buffer ()
+    "Open dir at point in new buffer."
+    (interactive)
+    (let ((dired-kill-when-opening-new-dired-buffer nil))
+      (dired-find-file)))
+
   (setq dired-mode-map (make-sparse-keymap))
   (general-def
     :keymaps 'dired-mode-map
@@ -132,6 +138,7 @@
     "fD" '(dired-do-delete :wk "Delete")
 
     "d" '(:wk "Dir")
+    "do" '(toki-dired-find-dir-new-buffer :wk "Open Dir in New Buffer")
     "di" '(dired-maybe-insert-subdir :wk "Add This Dir")
     "df" '(dired-hide-subdir :wk "<> Fold This Dir")
     "dk" '(dired-kill-subdir :wk "Remove This Dir")
