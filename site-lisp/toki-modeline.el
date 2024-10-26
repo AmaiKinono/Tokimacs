@@ -352,7 +352,7 @@ Return nil if the dir isn't version controlled."
 (defvar toki-modeline-inactive-left-format
   '(" "
     toki-modeline-winum
-    buffer-name)
+    toki-modeline-path)
   "Modeline format (left part) for inactive window.")
 
 (defun toki-modeline/format-item (item)
