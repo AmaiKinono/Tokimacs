@@ -261,7 +261,7 @@ Return nil if the dir isn't version controlled."
   "Return battery state."
   (let* ((status (funcall battery-status-function))
          (ac (battery-format "%L" status))
-         (percentage (battery-format "%p%%%%" status))
+         (percentage (battery-format "%p%%" status))
          (remaining (battery-format "%t" status))
          (indicator (battery-format "%b" status))
          (face (pcase indicator
