@@ -34,6 +34,13 @@ See `consult-find-command'.")
   "Find command used when \"fd\" program is not avaliable.
 See `consult-find-command'.")
 
+;;;; Internals
+
+(defvar toki-favorite-locations nil
+  "An alist of favorite locations.
+The key is a string of a user-given name, and value is the
+location. This is a lightweight replacement of bookmark.")
+
 ;;;; APIs
 
 ;;;###autoload
@@ -82,6 +89,21 @@ See `consult-find-command'.")
             (push (file-name-nondirectory f) executables)))))
     (delete-dups executables)))
 
+;;;###autoload
+(defun toki-read-fav-location ()
+  (let (coll)
+    (dolist (x toki-favorite-locations)
+      (push
+       (cons (concat (propertize (format "%s:" (car x))
+                                 'face 'font-lock-function-name-face)
+                     " "
+                     (cdr x))
+             (cdr x))
+       coll))
+    (setq coll (nreverse coll))
+    (alist-get (completing-read "Location: " coll nil 'require-match)
+               coll nil nil #'equal)))
+
 ;;;; Commands
 
 ;;;###autoload
@@ -124,6 +146,14 @@ See `consult-find-command'.")
     (funcall initial-major-mode)
     (setq buffer-offer-save t)
     buf))
+
+;;;###autoload
+(defun toki-replace-minibuf-input-by-fav-location ()
+    "Replace minibuffer input with a favorite location."
+    (interactive)
+    (when (minibufferp)
+      (delete-minibuffer-contents)
+      (insert (toki-read-fav-location))))
 
 (provide 'toki-file)
 

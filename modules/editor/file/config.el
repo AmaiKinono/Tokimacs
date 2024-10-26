@@ -161,6 +161,18 @@
     "td" '(dired-hide-details-mode :wk "<> Details")
     "tt" '(toki-dired-term :wk "Term in Current Dir")))
 
+;;; File
+
+;; Quickly input favorite location in file-related commands in vertico.
+(with-eval-after-load 'vertico
+  (defvar-keymap toki/vertico-file-category-map
+    :parent vertico-map)
+  (toki-local-def
+    :keymaps 'toki/vertico-file-category-map
+    "f" '("Favorite Location" . toki-replace-minibuf-input-by-fav-location))
+  (add-to-list 'vertico-multiform-categories
+               `(file (vertico-map . ,toki/vertico-file-category-map))))
+
 ;;; window
 
 (setq mouse-autoselect-window t)

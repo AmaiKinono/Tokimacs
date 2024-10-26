@@ -23,7 +23,8 @@
                    (t
                     :background "#454545" :extend t))
                  'face-defface-spec)
-  (vertico-mode))
+  (vertico-mode)
+  (vertico-multiform-mode))
 
 (use-package orderless
   :trigger pre-command-hook
