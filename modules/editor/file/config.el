@@ -211,8 +211,7 @@
 (with-eval-after-load 'consult
   (define-advice consult--buffer-pair (:around (_ buffer) show-path)
     "Also show path for file buffers so the user can filter them by path."
-    (let ((dir (or (toki-project-root) default-directory))
-          name)
+    (let ((dir (or (toki-project-root) default-directory)))
       (if-let ((path (buffer-file-name buffer)))
           (progn (when (file-in-directory-p path dir)
                    (setq path (file-relative-name path dir)))
