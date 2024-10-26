@@ -83,7 +83,14 @@ The first element is used as the default theme.")
      '((cursor :background base06)
        ;; Error should be in the same color as keywords.
        (error :foreground base0E)
-       (mode-line-active :box base03)))
+       (mode-line-active :background base01 :box base03
+                         :inherit mode-line)
+       (mode-line-inactive :background base00 :foreground base03
+                           :underline base02 :inherit mode-line)
+       (toki-tabs-current-tab-face :background base02 :foreground base06)
+       (toki-tabs-inactive-tab-face :foreground base04)
+       (toki-tabs-separator-face :foreground base02)
+       (toki-tabs-rest-face :italic t)))
     (funcall fn theme-name theme-colors)))
 
 (use-package toki-base16-gruvbox-theme
@@ -146,22 +153,9 @@ This also add `toki/really-set-default-font' to
   :straight nil
   :init
   (setq-default mode-line-format '(:eval (toki-modeline-compute)))
+  (face-spec-set 'mode-line '((t :height 0.9)))
   :config
   (toki-modeline-setup))
-
-(defun toki/modeline-refresh-face ()
-  (let ((bg (face-attribute 'default :background)))
-    (set-face-attribute 'mode-line nil
-                        :background bg :height 0.9)
-    ;; This is added in Emacs 29.
-    (when (facep 'mode-line-active)
-      (set-face-attribute 'mode-line-active nil
-                          :inherit 'mode-line))
-    (set-face-attribute 'mode-line-inactive nil
-                        :background bg :height 0.9
-                        :inherit 'shadow)))
-
-(add-hook 'toki-after-load-theme-hook #'toki/modeline-refresh-face)
 
 ;;; Misc
 

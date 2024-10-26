@@ -71,25 +71,23 @@ update the UI.")
 
 (defface toki-tabs-current-tab-face
   '((((background light))
-     :background "#d5c9c0" :foreground "#282828"
-     :bold t)
+     :background "#d5c9c0" :foreground "#282828")
     (t
-     :background "#504945" :foreground "#fbf1c7"
-     :bold t))
+     :background "#504945" :foreground "#fbf1c7"))
   "Face for current tab.")
 
 (defface toki-tabs-inactive-tab-face
   '((((background light))
-     :foreground "#665c54" :bold nil)
+     :foreground "#665c54")
     (t
-     :foreground "#bdae93" :bold nil))
+     :foreground "#bdae93"))
   "Face for inactive tabs.")
 
 (defface toki-tabs-separator-face
   '((((background light))
-     :foreground "#bdae93" :bold t)
+     :foreground "#bdae93")
     (t
-     :foreground "#665c54" :bold t))
+     :foreground "#665c54"))
   "Face for separator.")
 
 (defface toki-tabs-rest-face
