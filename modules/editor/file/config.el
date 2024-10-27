@@ -194,7 +194,6 @@
 
 (use-package toki-tabs
   :straight nil
-  :trigger 'emacs-startup-hook
   :config
   (toki/setq toki-tabs-project-root-function #'toki-project-root
              toki-tabs-visible-buffer-limit nil)
@@ -206,7 +205,9 @@
                  '((t :inherit default
                       :height 0.9
                       :background unspecified)))
-  (tab-bar-mode))
+  ;; `tab-bar-mode' actually takes a lot of init time, and it's super weird
+  ;; that put it in a 0.0s idle timer is actually faster.
+  (run-with-idle-timer 0.0 nil #'tab-bar-mode))
 
 (with-eval-after-load 'consult
   (define-advice consult--buffer-pair (:around (_ buffer) show-path)

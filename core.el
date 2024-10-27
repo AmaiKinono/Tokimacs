@@ -332,7 +332,6 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
   :straight nil)
 
 (use-package no-littering
-  :trigger after-init-hook
   :config
   (no-littering-theme-backups))
 
@@ -503,11 +502,12 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
   "U" '(toki-update-all :wk "Update All Packages"))
 
 (use-package which-key
-  :hook (after-init . which-key-mode)
+  :defer 0.2
   :config
   (toki/setq
    which-key-separator ": "
    which-key-max-display-columns 6
    which-key-idle-delay 0.8
    which-key-idle-secondary-delay 0
-   which-key-sort-order 'which-key-key-order-alpha))
+   which-key-sort-order 'which-key-key-order-alpha)
+  (which-key-mode))

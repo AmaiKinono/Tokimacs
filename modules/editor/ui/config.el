@@ -130,26 +130,18 @@ See the docstring of `load-theme' for details."
     (mapc #'disable-theme custom-enabled-themes)
     (load-theme (intern theme) 'no-confirm)))
 
-(defun toki/initialize-theme ()
-  "Load theme during startup.
-This also add `toki/really-set-default-font' to
-`toki-after-load-theme-hook'.  See its docstring for details."
-  (load-theme (car toki-themes) 'no-confirm))
-
-(add-hook 'after-init-hook #'toki/initialize-theme)
+(load-theme (car toki-themes) 'no-confirm)
 
 ;;; Font
 
 (use-package toki-font
   :straight nil
-  :init
-  (when toki-gui-p
-    (add-hook 'after-init-hook #'toki-set-font)))
+  :config
+  (when toki-gui-p (toki-set-font)))
 
 ;;; Modeline
 
 (use-package toki-modeline
-  :trigger after-init-hook
   :straight nil
   :init
   (setq-default mode-line-format '(:eval (toki-modeline-compute)))

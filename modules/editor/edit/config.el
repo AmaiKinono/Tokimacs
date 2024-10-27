@@ -431,10 +431,9 @@ See the docstring of `replace-string' for details."
 ;; Whitespace lets us visualize blanks, mainly bad blanks like trailing
 ;; whitespace, see the configuration below.
 (use-package whitespace
+  :defer 0.2
   :straight nil
-  :trigger after-init-hook
   :config
-  (global-whitespace-mode)
   ;; Don't use different background for tabs.
   (face-spec-set 'whitespace-tab
                  '((t :background unspecified)))
@@ -486,7 +485,8 @@ See the docstring of `replace-string' for details."
                  trailing         ; trailing blanks
                  tabs             ; tabs (show by face)
                  tab-mark         ; tabs (show by symbol)
-                 )))))
+                 ))))
+  (global-whitespace-mode))
 
 ;; whitespace-cleanup-mode automatically clean up bad blanks (like trailing
 ;; whitespaces, empty lines at the end of file) when we save, but only when the
