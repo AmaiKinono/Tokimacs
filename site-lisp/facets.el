@@ -181,7 +181,7 @@ the output.
                   ('gnugrep (when (executable-find "grep") 'gnugrep))
                   ('rg (if (executable-find "rg")
                            'rg
-                         (when (executable-find "grep")) 'gnugrep)))))
+                         (when (executable-find "grep") 'gnugrep))))))
       (or prog (user-error "Grep program not available")))))
 
 (defun facets/grep-program ()
@@ -446,7 +446,7 @@ several seconds to avoid clash with existing facets."
 (defun facets/encode-title (title)
   "Encode TITLE to be put in a filename."
   (setq title (replace-regexp-in-string
-               (rx-to-string (nconc '(or) (mapcar #'car facets/title-punct-encoding-table)))
+               (rx-to-string (nconc (list 'or) (mapcar #'car facets/title-punct-encoding-table)))
                (lambda (punct) (cdr (assoc punct facets/title-punct-encoding-table)))
                title))
   (setq title (replace-regexp-in-string
