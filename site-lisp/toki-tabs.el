@@ -207,7 +207,8 @@ Minibuffer doesn't count.  This is updated by
   "Commands that shouldn't trigger resort.")
 
 (defun toki-tabs/update-buffer-list ()
-  "Update internal data when appropriate."
+  "Update internal data when appropriate.
+Returns non-nil if the buffer list is updated."
   (unless (window-minibuffer-p)
     (let ((current-buffer (current-buffer))
           non-hidden-bufs)
@@ -234,8 +235,13 @@ Minibuffer doesn't count.  This is updated by
 
 ;;;;; UI
 
-(defvar toki-tabs/update-buffer-list-timer nil
-  "Idle timer to update buffer.")
+(defvar toki-tabs/update-buffer-list-timer-repeat nil
+  "Idle timer to update buffer.
+This repeats in the background.")
+
+(defvar toki-tabs/update-buffer-list-timer-once nil
+  "Idle timer to update buffer.
+This is runned once when entering the idle state.")
 
 (cl-defstruct (toki-tabs/tab
                (:constructor nil)
@@ -340,6 +346,11 @@ When the current buffer is a hidden buffer, return nil."
                      (= (length tabs) toki-tabs-visible-buffer-limit))
             (cl-return))))
       (nreverse tabs))))
+
+(defun toki-tabs/update-buffer-list-and-refresh ()
+  "Update buffer list and redisplay the mode line."
+  (and (toki-tabs/update-buffer-list)
+       (force-mode-line-update)))
 
 ;;;;; Tab-bar integration helpers
 
@@ -570,18 +581,18 @@ know how to plug-in an UI for tabs."
         (toki-tabs/update-buffer-list)
         (add-hook 'buffer-list-update-hook
                   #'toki-tabs/buffer-list-changed)
-        (add-hook 'post-command-hook
-                  #'toki-tabs/update-buffer-list)
+        (setq toki-tabs/update-buffer-list-timer-once
+              (run-with-idle-timer 0.05 nil #'toki-tabs/update-buffer-list-and-refresh))
         ;; We do this in case buffer list is changed asynchronously.
-        (setq toki-tabs/update-buffer-list-timer
-              (run-with-idle-timer 0.1 'repeat #'toki-tabs/update-buffer-list)))
+        (setq toki-tabs/update-buffer-list-timer-repeat
+              (run-with-idle-timer 1 'repeat #'toki-tabs/update-buffer-list-and-refresh)))
     (toki-tabs-stop-count-freq)
     (remove-hook 'buffer-list-update-hook
                  #'toki-tabs/buffer-list-changed)
-    (remove-hook 'post-command-hook
-                 #'toki-tabs/update-buffer-list)
-    (cancel-timer toki-tabs/update-buffer-list-timer)
-    (setq toki-tabs/update-buffer-list-timer nil)))
+    (cancel-timer toki-tabs/update-buffer-list-timer-once)
+    (cancel-timer toki-tabs/update-buffer-list-timer-repeat)
+    (setq toki-tabs/update-buffer-list-timer-once nil
+          toki-tabs/update-buffer-list-timer-repeat nil)))
 
 (provide 'toki-tabs)
 
