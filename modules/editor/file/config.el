@@ -211,13 +211,16 @@
 
 (with-eval-after-load 'consult
   (define-advice consult--buffer-pair (:around (_ buffer) show-path)
-    "Also show path for file buffers so the user can filter them by path."
-    (let ((dir (or (toki-project-root) default-directory)))
-      (if-let ((path (buffer-file-name buffer)))
-          (progn (when (file-in-directory-p path dir)
-                   (setq path (file-relative-name path dir)))
-                 (cons path buffer))
-        (cons (buffer-name buffer) buffer)))))
+    "Also show path and major mode so the user can filter by them."
+    (let ((dir (or (toki-project-root) default-directory))
+          (path (buffer-file-name buffer))
+          (mode (with-current-buffer buffer (format "%s" major-mode))))
+      (when (and path (file-in-directory-p path dir))
+        (setq path (file-relative-name path dir)))
+      (when (string-suffix-p "-mode" mode)
+        (setq mode (substring mode 0 (- (length mode) (length "-mode")))))
+      (cons (format "%s:%s" (or path (buffer-name buffer)) mode)
+            buffer))))
 
 ;;; Keybinds
 
