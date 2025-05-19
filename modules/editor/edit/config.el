@@ -233,7 +233,7 @@ soft/hard case.  Non-nil FIXEDCASE equals \"hard case\"."
               (symbol-function 'lookup-key))
              ((symbol-function 'lookup-key)
               (lambda (map key &optional accept-default)
-                (or (apply lookup-key-orig map key accept-default)
+                (or (funcall lookup-key-orig map key accept-default)
                     (when (eq map query-replace-map) 'help)))))
     (apply fn args)))
 
