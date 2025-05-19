@@ -68,6 +68,15 @@ The first element is used as the default theme.")
 ;; monospaced font as the default font, we let it use the default font.
 (set-face-attribute 'fixed-pitch nil :family 'unspecified)
 
+(defun toki/color-bright-p (color)
+  "Return t if COLOR is bright."
+  (when-let* ((rgb (color-name-to-rgb color))
+              ;; Ref: https://www.w3.org/TR/AERT/#color-contrast
+              (br (+ (* 0.299 (nth 0 rgb))
+                     (* 0.587 (nth 1 rgb))
+                     (* 0.114 (nth 2 rgb)))))
+    (> br 0.5)))
+
 (use-package base16-theme
   :init
   (toki/setq
@@ -90,7 +99,57 @@ The first element is used as the default theme.")
        (toki-tabs-current-tab-face :background base02 :foreground base06)
        (toki-tabs-inactive-tab-face :foreground base04)
        (toki-tabs-separator-face :foreground base02)
-       (toki-tabs-rest-face :italic t)))
+       (toki-tabs-rest-face :italic t)
+       ;; Don't mess with colors in terminals
+       (term-color-black :inherit ansi-color-black)
+       (term-color-white :inherit ansi-color-white)
+       (term-color-red :inherit ansi-color-red)
+       (term-color-yellow :inherit ansi-color-yellow)
+       (term-color-green :inherit ansi-color-green)
+       (term-color-cyan :inherit ansi-color-cyan)
+       (term-color-blue :inherit ansi-color-blue)
+       (term-color-magenta :inherit ansi-color-magenta)))
+    ;; Source: https://www.markusweimar.de/en/color-schemes/. It's good to use
+    ;; high contrast theme for terminals as some programs prints in close
+    ;; foreground and background colors, for example, cyan text on green
+    ;; background.
+    (if (toki/color-bright-p (plist-get theme-colors :base00))
+        (base16-theme-set-faces
+         theme-name theme-colors
+         '((ansi-color-black :foreground "#000000" :background "#000000")
+           (ansi-color-white :foreground "#aaaaaa" :background "#aaaaaa")
+           (ansi-color-red :foreground "#bd000d" :background "#bd000d")
+           (ansi-color-yellow :foreground "#ffbb00" :background "#ffbb00")
+           (ansi-color-green :foreground "#006607" :background "#006607")
+           (ansi-color-cyan :foreground "#005a61" :background "#005a61")
+           (ansi-color-blue :foreground "#004ce6" :background "#004ce6")
+           (ansi-color-magenta :foreground "#ad007f" :background "#ad007f")
+           (ansi-color-bright-black :foreground "#000000" :background "#000000")
+           (ansi-color-bright-white :foreground "#ffffff" :background "#ffffff")
+           (ansi-color-bright-red :foreground "#bd000d" :background "#bd000d")
+           (ansi-color-bright-yellow :foreground "#ffbb00" :background "#ffbb00")
+           (ansi-color-bright-green :foreground "#006607" :background "#006607")
+           (ansi-color-bright-cyan :foreground "#005a61" :background "#005a61")
+           (ansi-color-bright-blue :foreground "#004ce6" :background "#004ce6")
+           (ansi-color-bright-magenta :foreground "#ad007f" :background "#ad007f")))
+      (base16-theme-set-faces
+       theme-name theme-colors
+       '((ansi-color-black :foreground "#000000" :background "#000000")
+         (ansi-color-white :foreground "#888888" :background "#888888")
+         (ansi-color-red :foreground "#ff7c4d" :background "#ff7c4d")
+         (ansi-color-yellow :foreground "#ffcc00" :background "#ffcc00")
+         (ansi-color-green :foreground "#22ff00" :background "#22ff00")
+         (ansi-color-cyan :foreground "#00ffff" :background "#00ffff")
+         (ansi-color-blue :foreground "#1a66ff" :background "#1a66ff")
+         (ansi-color-magenta :foreground "#ff61df" :background "#ff61df")
+         (ansi-color-bright-black :foreground "#000000" :background "#000000")
+         (ansi-color-bright-white :foreground "#ffffff" :background "#ffffff")
+         (ansi-color-bright-red :foreground "#ff7c4d" :background "#ff7c4d")
+         (ansi-color-bright-yellow :foreground "#ffcc00" :background "#ffcc00")
+         (ansi-color-bright-green foreground "#22ff00" :background "#22ff00")
+         (ansi-color-bright-cyan :foreground "#00ffff" :background "#00ffff")
+         (ansi-color-bright-blue :foreground "#1a66ff" :background "#1a66ff")
+         (ansi-color-bright-magenta :foreground "#ff61df" :background "#ff61df"))))
     (funcall fn theme-name theme-colors)))
 
 (use-package toki-base16-gruvbox-theme
