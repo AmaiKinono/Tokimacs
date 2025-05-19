@@ -19,7 +19,7 @@
 ;;; Auto completion
 
 (use-package company
-  :hook (pre-command . global-company-mode)
+  :trigger pre-command-hook
   :config
   (toki/setq
    ;; TODO: Sometimes I really need a completing-read UI for dabbrev.  Popup
@@ -48,7 +48,8 @@ chars.  This should be useful for CJK users."
     "C-p" 'company-select-previous
     "C-n" 'company-select-next
     "TAB" 'company-complete
-    "<tab>" 'company-complete))
+    "<tab>" 'company-complete)
+  (global-company-mode))
 
 ;;; Ctags
 
