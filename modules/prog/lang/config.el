@@ -93,7 +93,7 @@
 
 (use-package org
   :straight nil
-  :defer t
+  :defer 0.5
   :config
   ;; General Config
   (toki/setq org-startup-truncated nil
