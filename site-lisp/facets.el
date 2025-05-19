@@ -143,6 +143,23 @@ Or it can be the program name if it's in PATH.")
 (defvar facets-org-major-modes '(org-mode)
   "Major modes for org.")
 
+(defvar facets-file-handler-alist '(())
+  "Alist of file name predicates vs method to open this file.
+Each element looks like (PRED . METHOD).  If non of the PREDs
+matches the file name, `find-file' is used.
+
+PRED can be:
+
+- A string, which is a regexp.
+- A function, which takes one argument, the file name, and should
+  return non-nil if it matches the file.
+
+METHOD can be:
+
+- nil, to open the file using `find-file'.
+- A string PROGRAM, to open the file using external program.
+- A function which takes the file name.")
+
 ;;;; Utils
 
 ;;;;; Process
@@ -715,6 +732,25 @@ ATTR can be `title', `id' or `tags'.  VAL is its value, see
     (let ((buffer-file-name file))
       (facets/get-attr attr))))
 
+;;;;; Open facets
+
+(defun facets/open-facet (filename)
+  "Open the facet FILENAME based on `facets-file-handler-alist'."
+  (let* ((case-fold-search (file-name-case-insensitive-p filename))
+         (method (alist-get
+                  filename facets-file-handler-alist
+                  nil nil
+                  (lambda (pred filename)
+                    (if (functionp pred) (funcall pred filename)
+                      (string-match pred (file-local-name filename))))))
+         (default-directory (file-name-directory filename)))
+    (cond
+     ((stringp method) (start-file-process
+                        method nil method
+                        (file-local-name (expand-file-name filename))))
+     ((functionp method) (funcall method filename))
+     (t (find-file filename)))))
+
 ;;;;; Find facets
 
 (defun facets/all-facets (&optional dir)
@@ -729,6 +765,22 @@ If DIR is non-nil, return the paths of all facets in the directory"
        (not (cl-find-if
              (lambda (p) (string-match-p facets-excluded-dirs-regexp p))
              parts))))))
+
+(defun facets/read-facet (&optional dir)
+  "Ask the user to pick a facet in DIR and return the file path.
+If DIR is nil, prompt for a directory.  If `default-directory' is
+under DIR, it's used as a future history element and can be
+inserted by `next-history-element'."
+  (let* ((dir (or dir (read-directory-name "Dir: " facets-directory)))
+         (cands (mapcar (lambda (f)
+                          (cons (file-relative-name f facets-directory) f))
+                        (facets/all-facets dir)))
+         (default (when (file-in-directory-p default-directory
+                                             facets-directory)
+                    (file-relative-name default-directory facets-directory))))
+    (cdr (assoc (completing-read "Facet: " cands nil t
+                                 nil nil default)
+                cands #'equal))))
 
 ;;;;; Find references
 
@@ -1066,15 +1118,11 @@ automatically."
 (defun facets-find-facet ()
   "Open a facet.
 This prompts you for a directory, then you can pick a facet in
-it, including all its subdirectories."
+it, including all its subdirectories.  Use
+\\[next-history-element] to insert current directory to
+minibuffer."
   (interactive)
-  (let* ((dir (read-directory-name "Dir: " facets-directory))
-         (cands (mapcar (lambda (f)
-                          (cons (file-name-nondirectory f)
-                                f))
-                        (facets/all-facets dir))))
-    (find-file (cdr (assoc (completing-read "Facet: " cands nil t)
-                           cands #'equal)))))
+  (facets/open-facet (facets/read-facet)))
 
 ;;;###autoload
 (defun facets-move-file-into-subdir ()
@@ -1250,6 +1298,14 @@ suggested to use `facets-sync-file-name' instead.  Really continue? "))
       (kill-new (concat "facet:" id))
     (user-error "Facet ID not found for current buffer")))
 
+;;;###autoload
+(defun facets-find-facet-and-copy-id ()
+  "Pick a facet and copy its ID as link."
+  (interactive)
+  (if-let ((id (car (facets/parse-filename (facets/read-facet)))))
+      (kill-new (concat "facet:" id))
+    (user-error "Not a facet")))
+
 ;;;;; Reading
 
 (defvar facets/marker-ring (make-ring 50)
@@ -1266,12 +1322,12 @@ suggested to use `facets-sync-file-name' instead.  Really continue? "))
          (marker (point-marker)))
     (ring-insert facets/marker-ring marker)
     (if (eq (length files) 1)
-        (find-file (car files))
+        (facets/open-facet (car files))
       (let ((cands (mapcar (lambda (f) (file-relative-name f facets-directory))
                            files)))
-        (find-file (expand-file-name (completing-read
-                                      "Pick a source: " cands nil t)
-                                     facets-directory))))))
+        (facets/open-facet (expand-file-name (completing-read
+                                              "Pick a source: " cands nil t)
+                                             facets-directory))))))
 
 (defun facets-jump-back ()
   "Go back to the position before last `facets-follow-link'."
