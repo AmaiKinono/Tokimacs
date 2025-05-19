@@ -263,7 +263,7 @@ Minibuffer doesn't count.  This is updated by
 (defun toki-tabs/buffer-tab (buf)
   "Create `toki-tabs/tab' for BUF."
   (let ((current (eq buf (window-buffer (minibuffer-selected-window))))
-        (name (toki-tabs/truncated-buffer-name buf)))
+        (name (toki-tabs/buffer-tab-name buf)))
     (toki-tabs/make-tab
      :buffer buf
      :name (propertize name 'face
@@ -301,6 +301,14 @@ The buffer name may be truncated according to
               (concat name toki-tabs-ellipsis ext))
           buf-name))
     (buffer-name buf)))
+
+(defun toki-tabs/buffer-tab-name (buf)
+  "Return tab name of buffer BUF."
+  (let ((name (toki-tabs/truncated-buffer-name buf)))
+    (with-current-buffer buf
+      (cond
+       ((derived-mode-p 'dired-mode) (format "@%s" name))
+       (t name)))))
 
 (defun toki-tabs/visible-tabs-and-remain-num ()
   "Return the visible tabs and number of remaining tabs in a cons cell.
@@ -394,7 +402,7 @@ line that causes the tabs to not update instantly, customize
     ;; `switch-to-buffer') and therefore not in the visible tabs.
     (when (and rest (not buf-visible-p))
       (setq rest (concat rest
-                         (propertize (toki-tabs/truncated-buffer-name
+                         (propertize (toki-tabs/buffer-tab-name
                                       current-buf)
                                      'face 'toki-tabs-current-tab-face))))
     (setq toki-tabs-string
@@ -402,7 +410,7 @@ line that causes the tabs to not update instantly, customize
               (string-join (nconc (mapcar #'toki-tabs/tab-name tabs)
                                   (when rest (list rest)))
                            (toki-tabs/separator-str))
-            (propertize (toki-tabs/truncated-buffer-name current-buf)
+            (propertize (toki-tabs/buffer-tab-name current-buf)
                         'face 'toki-tabs-current-tab-face)))))
 
 (defun toki-tabs-tab-bar-format ()
