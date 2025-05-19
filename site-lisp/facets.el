@@ -1092,7 +1092,7 @@ together with the resources."
          (subdir (read-directory-name
                   "Subdir: "
                   (file-name-directory file) nil nil
-                  (nth 1 (facets/parse-filename file))))
+                  (file-name-sans-extension (file-name-nondirectory file))))
          (newname (expand-file-name (file-name-nondirectory file) subdir)))
     (make-directory subdir t)
     (rename-file file newname)
