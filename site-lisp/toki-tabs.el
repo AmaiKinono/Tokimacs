@@ -100,7 +100,13 @@ update the UI.")
 
 (defun toki-tabs/current-buffer ()
   "Return current buffer, or the buffer before entering minibuffer."
-  (window-buffer (minibuffer-selected-window)))
+  ;; For some reason (window-buffer (minibuffer-selected-window)) can return
+  ;; nil.  I haven't fully understand the condition.
+  (or (and (minibufferp)
+           (when-let* ((w (minibuffer-selected-window))
+                       (b (window-buffer w)))
+             (when (buffer-live-p b) b)))
+      (current-buffer)))
 
 ;;;;; Buffer group
 
@@ -206,32 +212,47 @@ Minibuffer doesn't count.  This is updated by
   '(toki-tabs-previous toki-tabs-next)
   "Commands that shouldn't trigger resort.")
 
+(defun toki-tabs/buffer-before-or-freq-higher-p (buf1 buf2)
+  "Return t if
+- In `toki-tabs/sorted-buffer-list', BUF1 comes before BUF2.
+- Or one of them is not in `toki-tabs/sorted-buffer-list', and the used
+  frequency of BUF1 is higher than BUF2."
+  (if-let* ((a (cl-position buf1 toki-tabs/sorted-buffer-list :test #'eq))
+            (b (cl-position buf2 toki-tabs/sorted-buffer-list :test #'eq)))
+      (< a b)
+    (toki-tabs/buffer-freq-higher-p buf1 buf2)))
+
 (defun toki-tabs/update-buffer-list ()
   "Update internal data when appropriate.
-Returns non-nil if the buffer list is updated."
-  (unless (window-minibuffer-p)
-    (let ((current-buffer (current-buffer))
-          non-hidden-bufs)
-      ;; We don't update when the buffer list is not changed, or the current
-      ;; buffer is not changed & no non-hidden buffers is killed/added.
-      (unless (or (not toki-tabs/buffer-list-changed)
-                  (and (eq current-buffer toki-tabs/last-active-buffer)
-                       (cl-every #'buffer-live-p
-                                 toki-tabs/sorted-buffer-list)
-                       (progn (setq non-hidden-bufs
-                                    (cl-remove-if-not #'toki-tabs/buffer-group
-                                                      (buffer-list)))
-                              (eq (length non-hidden-bufs)
-                                  (length toki-tabs/sorted-buffer-list)))))
-        (unless (member this-command toki-tabs/inhibit-resort-commands)
-          (setq non-hidden-bufs (or non-hidden-bufs
-                                    (cl-remove-if-not #'toki-tabs/buffer-group
-                                                      (buffer-list))))
-          (setq toki-tabs/sorted-buffer-list
-                (sort non-hidden-bufs #'toki-tabs/buffer-freq-higher-p)))
-        (run-hooks 'toki-tabs-update-hook)
-        (setq toki-tabs/buffer-list-changed nil)
-        (setq toki-tabs/last-active-buffer (current-buffer))))))
+Returns non-nil if the buffer list is updated or the active buffer is
+changed."
+  (let ((current-buf (toki-tabs/current-buffer))
+        non-hidden-bufs sort-func)
+    ;; We don't update when the buffer list is not changed, or the current
+    ;; buffer is not changed & no non-hidden buffers is killed/added.
+    (unless (or (not toki-tabs/buffer-list-changed)
+                (and (eq current-buf toki-tabs/last-active-buffer)
+                     (cl-every #'buffer-live-p
+                               toki-tabs/sorted-buffer-list)
+                     (progn (setq non-hidden-bufs
+                                  (cl-remove-if-not #'toki-tabs/buffer-group
+                                                    (buffer-list)))
+                            (eq (length non-hidden-bufs)
+                                (length toki-tabs/sorted-buffer-list)))))
+      (if (member (or this-command
+                      (and (current-idle-time) last-command))
+                  toki-tabs/inhibit-resort-commands)
+          ;; If this is run in some `inhibit-resort-commands', or in some idle
+          ;; time after that, use existing order whenever possible.
+          (setq sort-func #'toki-tabs/buffer-before-or-freq-higher-p)
+        (setq sort-func #'toki-tabs/buffer-freq-higher-p))
+      (setq non-hidden-bufs (or non-hidden-bufs
+                                (cl-remove-if-not #'toki-tabs/buffer-group
+                                                  (buffer-list))))
+      (setq toki-tabs/sorted-buffer-list (sort non-hidden-bufs sort-func))
+      (run-hooks 'toki-tabs-update-hook)
+      (setq toki-tabs/buffer-list-changed nil)
+      (setq toki-tabs/last-active-buffer current-buf))))
 
 ;;;;; UI
 
@@ -268,7 +289,7 @@ This is runned once when entering the idle state.")
 
 (defun toki-tabs/buffer-tab (buf)
   "Create `toki-tabs/tab' for BUF."
-  (let ((current (eq buf (window-buffer (minibuffer-selected-window))))
+  (let ((current (eq buf (toki-tabs/current-buffer)))
         (name (toki-tabs/buffer-tab-name buf)))
     (toki-tabs/make-tab
      :buffer buf
@@ -325,7 +346,12 @@ When the current buffer is a hidden buffer, return nil."
          tabs)
     (when group
       (dolist (b toki-tabs/sorted-buffer-list)
-        (when (equal (toki-tabs/buffer-group b) group)
+        ;; The buffer live check prevents error when a buffer is killed but
+        ;; `toki-tabs/update-buffer-list' has not been called.  This may happen
+        ;; if `toki-tabs/update-buffer-list' is put in an idle timer or in
+        ;; similar situations.
+        (when (and (buffer-live-p b)
+                   (equal (toki-tabs/buffer-group b) group))
           (if (or (null toki-tabs-visible-buffer-limit)
                   (< (length tabs) toki-tabs-visible-buffer-limit))
               (push b tabs)
@@ -340,7 +366,8 @@ When the current buffer is a hidden buffer, return nil."
          tabs)
     (when group
       (cl-dolist (b toki-tabs/sorted-buffer-list)
-        (when (equal (toki-tabs/buffer-group b) group)
+        (when (and (buffer-live-p b)
+                   (equal (toki-tabs/buffer-group b) group))
           (push b tabs)
           (when (and toki-tabs-visible-buffer-limit
                      (= (length tabs) toki-tabs-visible-buffer-limit))
@@ -401,7 +428,7 @@ Have an element like
 will do the work.  If you have some cache mechanism over the mode
 line that causes the tabs to not update instantly, customize
 `toki-tabs-update-hook' to update the cache."
-  (let* ((current-buf (window-buffer (minibuffer-selected-window)))
+  (let* ((current-buf (toki-tabs/current-buffer))
          (tabs-and-remain (toki-tabs/visible-tabs-and-remain-num))
          (tabs (car tabs-and-remain))
          (num (cdr tabs-and-remain))
@@ -426,7 +453,7 @@ line that causes the tabs to not update instantly, customize
 
 (defun toki-tabs-tab-bar-format ()
   "A function that can be used in `tab-bar-format'."
-  (let* ((current-buf (window-buffer (minibuffer-selected-window)))
+  (let* ((current-buf (toki-tabs/current-buffer))
          (tabs-and-remain (toki-tabs/visible-tabs-and-remain-num))
          (tabs (car tabs-and-remain))
          (num (cdr tabs-and-remain))
@@ -450,8 +477,8 @@ The current group will be the first one."
   (let ((current-group (toki-tabs/buffer-group))
         groups)
     (cl-loop for b in toki-tabs/sorted-buffer-list
-             for g = (toki-tabs/buffer-group b)
-             do (unless (member g groups) (push g groups)))
+             for g = (when (buffer-live-p b) (toki-tabs/buffer-group b))
+             do (unless (or (null g) (member g groups)) (push g groups)))
     (cl-delete current-group groups)
     (setq groups (nreverse groups))
     (push current-group groups)
@@ -548,7 +575,8 @@ When CURRENT is non-nil, use current group."
                       (toki-tabs-read-group))))
     (let (bufs collection)
       (dolist (b toki-tabs/sorted-buffer-list)
-        (when (equal (toki-tabs/buffer-group b) group)
+        (when (and (buffer-live-p b)
+                   (equal (toki-tabs/buffer-group b) group))
           (push b bufs)))
       (setq bufs (mapcar #'buffer-name (nreverse bufs)))
       (setq collection
