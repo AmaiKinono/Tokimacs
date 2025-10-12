@@ -302,6 +302,39 @@ Return nil if current buffer is not a file buffer."
   "Return the latest modification time of FILE."
   (file-attribute-modification-time (file-attributes file)))
 
+(defun facets/rename-directory (dirname newname)
+  "Rename directory DIRNAME to NEWNAME.
+This checks if there's any visited file under DIRNAME and change their
+file name accordingly."
+  (setq newname (file-name-as-directory newname))
+  (let* ((bufs (cl-remove-if-not
+                (lambda (buf)
+                  (when-let* ((f (buffer-file-name buf)))
+                    (file-in-directory-p f dirname)))
+                (buffer-list)))
+         (new-default-dirs
+          (mapcar (lambda (buf)
+                    (with-current-buffer buf
+                      (if (file-in-directory-p default-directory dirname)
+                          (expand-file-name
+                           (file-relative-name default-directory dirname)
+                           newname)
+                        default-directory)))
+                  bufs)))
+    (rename-file dirname (directory-file-name newname))
+    (cl-loop for buf in bufs
+             for new-default-dir in new-default-dirs
+             do
+             (with-current-buffer buf
+               (let ((modflag (buffer-modified-p)))
+                 (setq default-directory new-default-dir)
+                 (set-visited-file-name
+                  (expand-file-name
+                   (file-relative-name buffer-file-name dirname)
+                   newname))
+                 (set-buffer-modified-p modflag)
+                 (when facets-mode (facets/trim-buffer-name)))))))
+
 ;;;; Internals
 
 ;;;;; File naming
@@ -1049,7 +1082,7 @@ If the frontmatter is not presented, return nil."
 (defun facets/trim-buffer-name ()
   "Trim the ID in current buffer name."
   (when-let* ((file-name (buffer-file-name)))
-    (rename-buffer (facets/filename-sans-id file-name))))
+    (rename-buffer (facets/filename-sans-id file-name) 'unique)))
 
 (defun facets/eldoc-call (callback)
   "Eldoc backend for `facets-mode'.
@@ -1145,7 +1178,8 @@ together with the resources."
     (make-directory subdir t)
     (rename-file file newname)
     (when this-file
-      (with-current-buffer buf (set-visited-file-name newname nil t)))))
+      (with-current-buffer buf (set-visited-file-name newname nil t))
+      (when facets-mode (facets/trim-buffer-name)))))
 
 ;;;###autoload
 (defun facets-rename-file ()
@@ -1174,7 +1208,43 @@ suggested to use `facets-sync-file-name' instead.  Really continue? "))
         (rename-file file newname)
         (when filebuf
           (with-current-buffer filebuf
-            (set-visited-file-name newname nil t)))))))
+            (set-visited-file-name newname nil t)
+            (when facets-mode (facets/trim-buffer-name))))))))
+
+;;;###autoload
+(defun facets-sync-dir-name (&optional update)
+  "Sync directory name of the visited facet.
+If UPDATE is non-nil, rename the directory only if it's already in
+facets filename format.
+
+If the visited file is the only facet in its directory, the directory
+name is synced with it.  Otherwise, if there's one and only one facet
+that has an \"folio\" tag in the directory, the directory name is synced
+with it.  If both are not the case, this will do nothing."
+  (interactive)
+  (unless (facets/parse-filename (buffer-file-name))
+    (user-error "The visited file is not a facet"))
+  (let* ((dir (file-name-directory (buffer-file-name))))
+    (unless (and update
+                 (not (facets/parse-filename (directory-file-name dir))))
+      (let* ((files (directory-files dir 'full))
+             facets-mainp-alist target)
+        (dolist (file files)
+          (when-let* ((parsed (and (not (file-directory-p file))
+                                   (facets/parse-filename file))))
+            (setf (alist-get file facets-mainp-alist nil nil #'equal)
+                  (member "folio" (nth 2 parsed)))))
+        (when (> (length facets-mainp-alist) 1)
+          (setq facets-mainp-alist
+                (cl-delete-if-not #'cdr facets-mainp-alist)))
+        (when (eq (length facets-mainp-alist) 1)
+          (setq target (caar facets-mainp-alist))
+          (setq target (expand-file-name
+                        (file-name-sans-extension (file-name-nondirectory
+                                                   target))
+                        (file-name-directory (directory-file-name dir))))
+          (unless (file-equal-p dir target)
+            (facets/rename-directory dir target)))))))
 
 ;;;###autoload
 (defun facets-sync-file-name ()
@@ -1200,7 +1270,8 @@ suggested to use `facets-sync-file-name' instead.  Really continue? "))
     (unless (equal file newname)
       (rename-file file newname)
       (with-current-buffer buf
-        (set-visited-file-name newname nil t)))))
+        (set-visited-file-name newname nil t)
+        (when facets-mode (facets/trim-buffer-name))))))
 
 ;;;###autoload
 (defun facets-save-file ()
@@ -1227,10 +1298,10 @@ suggested to use `facets-sync-file-name' instead.  Really continue? "))
         ;; `write-file-functions'.  Restore it.
         (let ((write-file-functions-orig write-file-functions))
           (set-visited-file-name filename)
+          (when facets-mode (facets/trim-buffer-name))
           (setq write-file-functions write-file-functions-orig)))))
-  (save-buffer)
-  (when facets-mode
-    (facets/trim-buffer-name)))
+  (facets-sync-dir-name 'update)
+  (save-buffer))
 
 ;;;;; Create facets
 
