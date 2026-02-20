@@ -176,8 +176,7 @@ This uses the values specified in `toki-font-rescale-alist'.  If
 FONT is not in it, use 1.0 as the rescale factor."
   (let ((factor (alist-get font toki-font-rescale-alist
                            1.0 'noremove #'equal)))
-    (setf (alist-get font face-font-rescale-alist
-                     'nodefault 'noremove #'equal)
+    (setf (alist-get font face-font-rescale-alist nil nil #'equal)
           factor)))
 
 (defun toki/set-fontset-font ()
