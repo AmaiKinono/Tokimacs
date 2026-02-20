@@ -126,6 +126,12 @@ When BUFFER is nil, use current buffer."
                '("*Backtrace" "*scratch" "*Faces" "*Messages"
                  "*Customize"))
       "*Common*")
+     ;; Use remote ID as group name, as detecting project root for remote files
+     ;; is generally slow.
+     ((setq group (file-remote-p
+                   (or (buffer-file-name buffer)
+                       (with-current-buffer buffer default-directory))))
+      group)
      ((setq group
             (or (buffer-local-value 'toki-tabs/buffer-group buffer)
                 (with-current-buffer buffer

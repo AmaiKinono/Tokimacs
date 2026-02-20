@@ -161,6 +161,45 @@
     "td" '(dired-hide-details-mode :wk "<> Details")
     "tt" '(toki-dired-term :wk "Term in Current Dir")))
 
+(use-package tramp
+  :straight nil
+  :defer t
+  :config
+  ;; Ref: https://coredumped.dev/2025/06/18/making-tramp-go-brrrr./
+  (toki/setq remote-file-name-inhibit-locks t
+             remote-file-name-inhibit-auto-save t
+             tramp-copy-size-limit (* 2 1024 1024) ;; 2MiB
+             tramp-use-scp-direct-remote-copying t)
+
+  (connection-local-set-profile-variables
+   'remote-direct-async-process
+   '((tramp-direct-async-process . t)))
+
+  (connection-local-set-profiles
+   '(:application tramp :protocol "scp")
+   'remote-direct-async-process)
+
+  (connection-local-set-profiles
+   '(:application tramp :protocol "ssh")
+   'remote-direct-async-process)
+
+  (with-eval-after-load 'compile
+    (remove-hook 'compilation-mode-hook
+                 #'tramp-compile-disable-ssh-controlmaster-options))
+
+  (add-hook
+   'find-file-hook
+   (defun toki/tramp-optimization ()
+     (when (file-remote-p (buffer-file-name))
+       (setq-local
+        project-find-functions (cl-remove #'project-try-vc project-find-functions)
+        vc-handled-backends nil)))))
+
+(use-package tramp-hlo
+  :after tramp
+  :config
+  (tramp-hlo-setup))
+
 ;;; File
 
 ;; Quickly input favorite location in file-related commands in vertico.
@@ -212,15 +251,21 @@
 (with-eval-after-load 'consult
   (define-advice consult--buffer-pair (:around (_ buffer) show-path)
     "Also show path and major mode so the user can filter by them."
-    (let ((dir (or (toki-project-root) default-directory))
-          (path (buffer-file-name buffer))
-          (mode (with-current-buffer buffer (format "%s" major-mode))))
-      (when (and path (file-in-directory-p path dir))
-        (setq path (file-relative-name path dir)))
+    (let ((path (buffer-file-name buffer))
+          (mode (with-current-buffer buffer (format "%s" major-mode)))
+          project)
       (when (string-suffix-p "-mode" mode)
         (setq mode (substring mode 0 (- (length mode) (length "-mode")))))
-      (cons (format "%s:%s" (or path (buffer-name buffer)) mode)
-            buffer))))
+      (cond
+       ((null path) (setq path (buffer-name buffer)))
+       ;; Detecting project root for remote paths is generally slow.
+       ((and (not (file-remote-p path))
+             (setq project (toki-project-root)))
+        (when (file-in-directory-p path project)
+          (setq path (file-name-concat
+                      (file-name-nondirectory (directory-file-name project))
+                      (file-relative-name path project))))))
+      (cons (format "%s:%s" path mode) buffer))))
 
 ;;; Keybinds
 

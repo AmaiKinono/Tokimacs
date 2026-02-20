@@ -59,6 +59,7 @@ chars.  This should be useful for CJK users."
   (require 'citre-config)
   :config
   (toki/setq
+   citre-auto-enable-citre-mode-backends-for-remote nil
    citre-project-root-function #'toki-project-root))
 
 ;;; Code reading
