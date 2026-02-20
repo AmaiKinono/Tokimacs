@@ -19,7 +19,7 @@
 ;;;; User options
 
 (defvar toki-project-root-files
-  '("src/" "node_modules/" "Makefile" "setup.py"
+  '("src/" "node_modules/" ".venv/" "Makefile" "setup.py"
     "configure.ac" "configure.in")
   "A list of files that marks the project root.")
 
