@@ -98,9 +98,28 @@ chars.  This should be useful for CJK users."
   (when (not toki-gui-p)
     (diff-hl-margin-mode)))
 
+;;; LSP
+
+(use-package eglot
+  :straight nil
+  :defer t
+  :init
+  (defun toki-eglot-read-command ()
+    (interactive)
+    (let ((current-prefix-arg '(4)))
+      (call-interactively #'eglot)))
+  :config
+  (eglot-inlay-hints-mode -1))
+
+
 ;;; Keybinds
 
 (toki-code-def
+  ;; TODO: Maybe a dedicated leader for LSP?
+  "l" '(eglot :wk "Start LSP Server")
+  "L" '(toki-eglot-read-command :wk "Start LSP Server by Command")
+  "d" '(eldoc-doc-buffer :wk "Show Doc")
+  "a" '(eglot-code-actions :wk "Code Action")
   "c" '(completion-at-point :wk "Auto Complete")
   "f" '(flycheck-mode :wk "<> Flycheck Mode")
   "F" '(flycheck-list-errors :wk "List Flycheck Errors")
