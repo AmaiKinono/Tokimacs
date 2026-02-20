@@ -610,10 +610,15 @@ know how to plug-in an UI for tabs."
         (add-hook 'buffer-list-update-hook
                   #'toki-tabs/buffer-list-changed)
         (setq toki-tabs/update-buffer-list-timer-once
-              (run-with-idle-timer 0.05 nil #'toki-tabs/update-buffer-list-and-refresh))
+              (run-with-idle-timer 0.05 'repeat #'toki-tabs/update-buffer-list-and-refresh))
         ;; We do this in case buffer list is changed asynchronously.
         (setq toki-tabs/update-buffer-list-timer-repeat
-              (run-with-idle-timer 1 'repeat #'toki-tabs/update-buffer-list-and-refresh)))
+              (run-with-timer
+               2 'repeat
+               (defun toki-tabs/periodic-update ()
+                 "Run `toki-tabs/update-buffer-list-and-refresh' but only when idle."
+                 (when (current-idle-time)
+                   (toki-tabs/update-buffer-list-and-refresh))))))
     (toki-tabs-stop-count-freq)
     (remove-hook 'buffer-list-update-hook
                  #'toki-tabs/buffer-list-changed)
