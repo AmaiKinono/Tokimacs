@@ -382,20 +382,20 @@ See the docstring of `replace-string' for details."
   :defer t)
 
 (use-package subword
-  :straight nil
+  :straight (:type built-in)
   :trigger pre-command-hook
   :config
   (global-subword-mode))
 
 (use-package elec-pair
-  :straight nil
+  :straight (:type built-in)
   :trigger pre-command-hook
   :config
   (electric-pair-mode))
 
 ;; paren is a package for showing matching parens.
 (use-package paren
-  :straight nil
+  :straight (:type built-in)
   :trigger pre-command-hook
   :init
   ;; NOTE: I just can't find a good way to redefine a face.  I know
@@ -432,7 +432,7 @@ See the docstring of `replace-string' for details."
 ;; whitespace, see the configuration below.
 (use-package whitespace
   :defer 0.2
-  :straight nil
+  :straight (:type built-in)
   :config
   ;; Don't use different background for tabs.
   (face-spec-set 'whitespace-tab
@@ -503,7 +503,7 @@ See the docstring of `replace-string' for details."
 
 ;; Delete selection when we type or paste.
 (use-package delsel
-  :straight nil
+  :straight (:type built-in)
   :trigger pre-command-hook
   :config
   (delete-selection-mode))

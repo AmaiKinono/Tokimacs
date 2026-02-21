@@ -92,7 +92,7 @@
     (delete-directory org-preview-latex-image-directory 'recursive)))
 
 (use-package org
-  :straight nil
+  :straight (:type built-in)
   :defer 0.5
   :config
   ;; General Config
@@ -145,7 +145,7 @@
     "SPC" '("Insert Zero Width Space" . toki-insert-zero-width-space)))
 
 (use-package ox
-  :straight nil
+  :straight (:type built-in)
   :after org
   :config
   ;; Zero width spaces (ZWS) are recommended to resolve conflict between plain

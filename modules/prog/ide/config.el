@@ -102,7 +102,7 @@ chars.  This should be useful for CJK users."
 ;;; LSP
 
 (use-package eglot
-  :straight nil
+  :straight (:type built-in)
   :defer t
   :init
   (defun toki-eglot-read-command ()

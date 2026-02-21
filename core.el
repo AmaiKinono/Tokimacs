@@ -305,7 +305,7 @@ If you are using GUI Emacs on macOS, this is likely to be true.")
 ;;; Basic packages
 
 (use-package use-package
-  :straight nil
+  :straight (:type built-in)
   :config
   ;; Add :trigger keyword to use-package, which means to load the package after
   ;; a function or hook.

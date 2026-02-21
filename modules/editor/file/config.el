@@ -24,7 +24,7 @@
   :straight nil)
 
 (use-package epa-file
-  :straight nil
+  :straight (:type built-in)
   :trigger find-file-noselect
   :config
   (toki/setq
@@ -49,7 +49,7 @@
     (epa-file-enable)))
 
 (use-package dired
-  :straight nil
+  :straight (:type built-in)
   :defer t
   :config
   (toki/setq
@@ -162,7 +162,7 @@
     "tt" '(toki-dired-term :wk "Term in Current Dir")))
 
 (use-package tramp
-  :straight nil
+  :straight (:type built-in)
   :defer t
   :config
   ;; Ref: https://coredumped.dev/2025/06/18/making-tramp-go-brrrr./
